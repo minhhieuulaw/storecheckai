@@ -1,7 +1,11 @@
 import OpenAI from "openai";
 import type { ScrapedData, Verdict, RiskLevel, ReviewConfidence, ScrapedProduct, PriceAnalysis } from "./types";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let _openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openai;
+}
 
 export interface AIAnalysis {
   verdict: Verdict;
@@ -86,7 +90,7 @@ Return ONLY this JSON (no markdown, no explanation):
 }`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -164,7 +168,7 @@ export async function analyzeProductPrices(products: ScrapedProduct[]): Promise<
         ? `$${product.priceUsd} USD (converted from ${product.price})`
         : product.price!;
 
-      const response = await openai.chat.completions.create({
+      const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: [{
           role: "user",
