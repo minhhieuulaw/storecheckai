@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/storecheckai
+  IMAGE_NAME: minhhieuulaw/storecheckai
 
 jobs:
   build-and-push:
@@ -74,10 +74,10 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Pull new image
-            docker pull ghcr.io/${{ github.repository }}/storecheckai:latest
+            docker pull ghcr.io/minhhieuulaw/storecheckai:latest
 
-            # Restart app with zero-downtime
-            docker compose up -d --no-deps --pull always app
+            # Restart app
+            GITHUB_REPO=minhhieuulaw/storecheckai docker compose up -d --no-deps --pull always app
 
             # Remove old images
             docker image prune -f
