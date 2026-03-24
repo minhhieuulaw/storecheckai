@@ -1,26 +1,144 @@
 @import "tailwindcss";
 
+/* ─── Design tokens ────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Surfaces */
+  --surface-1: rgba(255,255,255,0.03);
+  --surface-2: rgba(255,255,255,0.05);
+  --surface-hover: rgba(255,255,255,0.025);
+
+  /* Borders */
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-soft:   rgba(255,255,255,0.09);
+  --border-medium: rgba(255,255,255,0.13);
+
+  /* Brand */
+  --indigo: #6366f1;
+  --indigo-light: #818cf8;
+  --purple: #8b5cf6;
+  --purple-light: #a78bfa;
+
+  /* Semantic */
+  --color-pass:   #4ade80;
+  --color-warn:   #fbbf24;
+  --color-fail:   #f87171;
+  --color-muted:  #6b7280;
+
+  /* Motion */
+  --ease-spring:  cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:     cubic-bezier(0.0, 0.0, 0.2, 1);
+  --dur-fast:     150ms;
+  --dur-base:     250ms;
+  --dur-slow:     400ms;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Base ─────────────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  background: #07070f;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ─── Grain noise overlay ───────────────────────────────────────────────────── */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #07070f; }
+::-webkit-scrollbar-thumb { background: #1e1e35; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+
+/* ─── Keyframes ─────────────────────────────────────────────────────────────── */
+
+/* Shimmer for gradient borders / loading bars */
+@keyframes shimmer {
+  0%   { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Skeleton pulse — alternates opacity for skeleton placeholders */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.85; }
+}
+
+/* Subtle upward float for ambient decorations */
+@keyframes float-up {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* Glow breath for ambient orbs */
+@keyframes glow-breath {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.06); }
+}
+
+/* Fade in from below — for CSS-only entrance on low-motion contexts */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Utility classes ───────────────────────────────────────────────────────── */
+
+/* Skeleton blocks */
+.skeleton {
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+/* Gradient border shimmer (used on modal top bar etc.) */
+.shimmer-bar {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6, #c084fc, #6366f1);
+  background-size: 200% 100%;
+  animation: shimmer 2.2s linear infinite;
+}
+
+/* Glass surface base */
+.glass {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Premium card surface */
+.card-surface {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+}
+.card-surface:hover {
+  border-color: var(--border-soft);
+  background: var(--surface-2);
+}
+
+/* Focus ring override — more refined than Tailwind default */
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.6);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
