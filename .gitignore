@@ -37,6 +37,9 @@ yarn-error.log*
 .env*
 !.env.production.example
 
+# SSL certs (upload manually to server)
+nginx/ssl/
+
 # vercel
 .vercel
 
