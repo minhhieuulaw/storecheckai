@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { scrapeStore } from "@/lib/scraper";

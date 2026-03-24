@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession, findUserById, updateUser } from "@/lib/auth";
 import { stripe, STRIPE_PLANS, type StripePlanKey } from "@/lib/stripe";
