@@ -47,7 +47,21 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: text("created_at").notNull(),
 });
 
+// ── Support Tickets ─────────────────────────────────────────────────────────────
+export const tickets = pgTable("tickets", {
+  id:             text("id").primaryKey(),
+  userId:         text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subject:        text("subject").notNull(),
+  message:        text("message").notNull(),
+  status:         text("status").default("open").notNull(), // "open" | "replied" | "closed"
+  adminReply:     text("admin_reply"),
+  adminRepliedAt: text("admin_replied_at"),
+  createdAt:      text("created_at").notNull(),
+  updatedAt:      text("updated_at").notNull(),
+});
+
 export type UserRow               = typeof users.$inferSelect;
 export type ReportRow             = typeof reports.$inferSelect;
 export type SettingRow            = typeof settings.$inferSelect;
 export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
+export type TicketRow             = typeof tickets.$inferSelect;

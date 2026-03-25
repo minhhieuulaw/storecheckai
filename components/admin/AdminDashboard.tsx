@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Users, BarChart2, FileText, DollarSign, Shield, AlertTriangle,
   TrendingUp, UserCheck, UserX, Settings, ExternalLink, RefreshCw,
-  WrenchIcon, Clock,
+  WrenchIcon, Clock, MessageCircle,
 } from "lucide-react";
 import type { AdminStats, MaintenanceSettings } from "@/lib/admin";
 import { MaintenancePanel } from "./MaintenancePanel";
@@ -130,6 +130,12 @@ export function AdminDashboard({ stats, maintenance }: {
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
             <Users className="h-4 w-4" />
             Manage Users
+          </a>
+          <a href="/admin/tickets"
+            className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-gray-400 transition-all hover:text-white"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <MessageCircle className="h-4 w-4" />
+            Tickets
           </a>
           <a href="/"
             className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-gray-400 transition-all hover:text-white"

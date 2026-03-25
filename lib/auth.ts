@@ -4,7 +4,12 @@ import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { users } from "./schema";
 
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET ?? "fallback-secret-change-me");
+// Lazy getter so missing env var throws at runtime (not build time)
+function getSecret(): Uint8Array {
+  const s = process.env.AUTH_SECRET;
+  if (!s) throw new Error("AUTH_SECRET environment variable is not set");
+  return new TextEncoder().encode(s);
+}
 export const COOKIE_NAME    = "session";
 export const DISPLAY_COOKIE = "user_display";
 export const SESSION_DAYS   = 7;
@@ -116,12 +121,12 @@ export async function createSession(payload: SessionPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DAYS}d`)
-    .sign(SECRET);
+    .sign(getSecret());
 }
 
 export async function verifySession(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, getSecret());
     return payload as unknown as SessionPayload;
   } catch {
     return null;

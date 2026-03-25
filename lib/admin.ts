@@ -58,30 +58,51 @@ export async function getAdminStats(): Promise<AdminStats> {
   const weekAgo  = new Date(now.getTime() - 7  * 86400_000).toISOString();
   const monthAgo = new Date(now.getTime() - 30 * 86400_000).toISOString();
 
-  // Parallel queries
+  // Parallel SQL queries — no in-memory filtering of full user table
   const [
-    allUserRows,
-    totalReportRows,
+    countRows,
+    recentUserRows,
     todayReportRows,
+    planDistRows,
   ] = await Promise.all([
+    // Aggregate counts in one query
+    db.execute(sql`
+      SELECT
+        COUNT(*)                                                        AS total,
+        COUNT(*) FILTER (WHERE created_at >= ${todayStr})              AS today,
+        COUNT(*) FILTER (WHERE created_at >= ${weekAgo})               AS week,
+        COUNT(*) FILTER (WHERE created_at >= ${monthAgo})              AS month,
+        COUNT(*) FILTER (WHERE is_banned = true)                       AS banned,
+        COUNT(reports.id)                                              AS total_reports
+      FROM users
+      LEFT JOIN reports ON true
+      LIMIT 1
+    `),
+    // Recent 20 users for display
     db.select({
       id: users.id, email: users.email, name: users.name,
       plan: users.plan, checksRemaining: users.checksRemaining,
       createdAt: users.createdAt, isBanned: users.isBanned,
-    }).from(users).orderBy(desc(users.createdAt)),
-    db.select({ count: count() }).from(reports),
-    db.execute(sql`SELECT COUNT(*) FROM reports WHERE analyzed_at >= ${todayStr}`),
+    }).from(users).orderBy(desc(users.createdAt)).limit(20),
+    // Today's reports
+    db.execute(sql`SELECT COUNT(*) AS cnt FROM reports WHERE analyzed_at >= ${todayStr}`),
+    // Plan distribution
+    db.execute(sql`SELECT plan, COUNT(*) AS cnt FROM users GROUP BY plan`),
   ]);
 
-  const totalUsers     = allUserRows.length;
-  const usersToday     = allUserRows.filter(u => u.createdAt >= todayStr).length;
-  const usersThisWeek  = allUserRows.filter(u => u.createdAt >= weekAgo).length;
-  const usersThisMonth = allUserRows.filter(u => u.createdAt >= monthAgo).length;
-  const bannedUsers    = allUserRows.filter(u => u.isBanned).length;
+  // Total reports using simple count
+  const totalReportCount = await db.select({ count: count() }).from(reports);
+
+  const agg = countRows.rows[0] as Record<string, string>;
+  const totalUsers     = Number(agg.total   ?? 0);
+  const usersToday     = Number(agg.today   ?? 0);
+  const usersThisWeek  = Number(agg.week    ?? 0);
+  const usersThisMonth = Number(agg.month   ?? 0);
+  const bannedUsers    = Number(agg.banned  ?? 0);
 
   const byPlan: Record<string, number> = {};
-  for (const u of allUserRows) {
-    byPlan[u.plan] = (byPlan[u.plan] ?? 0) + 1;
+  for (const row of planDistRows.rows as Array<{ plan: string; cnt: string }>) {
+    byPlan[row.plan] = Number(row.cnt);
   }
 
   let estimatedMRR = 0;
@@ -89,10 +110,10 @@ export async function getAdminStats(): Promise<AdminStats> {
     estimatedMRR += (PLAN_PRICE_CENTS[plan] ?? 0) * cnt;
   }
 
-  const totalReports  = (totalReportRows[0] as { count: number }).count;
-  const todayReportCount = Number((todayReportRows.rows[0] as { count: string })?.count ?? 0);
+  const totalReports     = (totalReportCount[0] as { count: number }).count;
+  const todayReportCount = Number((todayReportRows.rows[0] as { cnt: string })?.cnt ?? 0);
 
-  const recentUsers: RecentUser[] = allUserRows.slice(0, 20).map(u => ({
+  const recentUsers: RecentUser[] = recentUserRows.map(u => ({
     id: u.id, email: u.email, name: u.name,
     plan: u.plan, checksRemaining: u.checksRemaining,
     createdAt: u.createdAt, isBanned: u.isBanned,
