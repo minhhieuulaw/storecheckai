@@ -155,7 +155,7 @@ function CheckoutForm({ plan }: { plan: string }) {
 
           {/* Right — Stripe Embedded Checkout */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
+            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "#ffffff" }}>
             {error ? (
               <div className="p-8 text-center">
                 <p className="text-red-400 text-sm mb-4">{error}</p>
@@ -173,21 +173,7 @@ function CheckoutForm({ plan }: { plan: string }) {
             ) : (
               <EmbeddedCheckoutProvider
                 stripe={stripePromise}
-                options={{
-                  clientSecret,
-                  appearance: {
-                    theme: "night",
-                    variables: {
-                      colorPrimary: "#6366f1",
-                      colorBackground: "#0d0d1a",
-                      colorText: "#e5e7eb",
-                      colorDanger: "#f87171",
-                      fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
-                      borderRadius: "12px",
-                      spacingUnit: "4px",
-                    },
-                  },
-                }}>
+                options={{ clientSecret }}>
                 <EmbeddedCheckout />
               </EmbeddedCheckoutProvider>
             )}

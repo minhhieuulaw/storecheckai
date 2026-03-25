@@ -96,15 +96,8 @@ export function BillingDashboard({ plan, checksRemaining, billingPeriodEnd, hasS
     router.push(`/checkout/pay?plan=${planKey}`);
   }
 
-  async function handlePortal() {
-    setPortalLoading(true);
-    try {
-      const res  = await fetch("/api/stripe/portal", { method: "POST" });
-      const data = await res.json() as { url?: string };
-      if (data.url) window.location.href = data.url;
-    } finally {
-      setPortalLoading(false);
-    }
+  function handlePortal() {
+    router.push("/dashboard/billing/manage");
   }
 
   return (

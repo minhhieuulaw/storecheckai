@@ -80,6 +80,9 @@ export async function POST(req: NextRequest) {
           ? { metadata: { userId: user.id, plan } }
           : undefined,
         allow_promotion_codes: true,
+        custom_text: {
+          submit: { message: "Your checks will be available immediately after payment." },
+        },
       });
       return NextResponse.json({ clientSecret: checkoutSession.client_secret });
     }
