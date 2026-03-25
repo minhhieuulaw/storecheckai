@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Loader2, AlertCircle, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function ForgotPasswordPage() {
   const { t, locale } = useTranslation();
@@ -45,10 +44,6 @@ export default function ForgotPasswordPage() {
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
         className="w-full max-w-md">
-
-        <div className="flex justify-end mb-4">
-          <LanguageSwitcher />
-        </div>
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
