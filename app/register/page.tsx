@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Loader2, AlertCircle, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [name,     setName]     = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +33,7 @@ export default function RegisterPage() {
       setDone(true);
       setTimeout(() => { router.push("/dashboard"); router.refresh(); }, 1400);
     } catch {
-      setError("Network error. Please try again.");
+      setError(t.auth.login.networkError);
     } finally {
       setLoading(false);
     }
@@ -50,6 +53,11 @@ export default function RegisterPage() {
         transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
         className="w-full max-w-md">
 
+        {/* Language switcher */}
+        <div className="flex justify-end mb-4">
+          <LanguageSwitcher />
+        </div>
+
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <a href="/" className="flex flex-col items-center gap-1 group">
@@ -59,7 +67,7 @@ export default function RegisterPage() {
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white">StorecheckAI</h1>
           </a>
-          <p className="text-sm text-gray-500 mt-1">Create your account · 1 free check included</p>
+          <p className="text-sm text-gray-500 mt-1">{t.auth.register.subtitle}</p>
         </div>
 
         {/* Card */}
@@ -85,7 +93,7 @@ export default function RegisterPage() {
 
                 {/* Name */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Full name</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">{t.auth.register.nameLabel}</label>
                   <input
                     type="text" value={name} onChange={e => { setName(e.target.value); setError(null); }}
                     placeholder="John Doe" autoComplete="name" required disabled={loading}
@@ -98,7 +106,7 @@ export default function RegisterPage() {
 
                 {/* Email */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Email</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">{t.auth.register.emailLabel}</label>
                   <input
                     type="email" value={email} onChange={e => { setEmail(e.target.value); setError(null); }}
                     placeholder="you@example.com" autoComplete="email" required disabled={loading}
@@ -111,7 +119,7 @@ export default function RegisterPage() {
 
                 {/* Password */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Password</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">{t.auth.register.passwordLabel}</label>
                   <div className="relative">
                     <input
                       type={showPw ? "text" : "password"} value={password}
@@ -151,8 +159,8 @@ export default function RegisterPage() {
                   className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-2"
                   style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
                   {loading
-                    ? <><Loader2 className="h-4 w-4 animate-spin" />Creating account…</>
-                    : "Create account"}
+                    ? <><Loader2 className="h-4 w-4 animate-spin" />{t.auth.register.submitting}</>
+                    : t.auth.register.submit}
                 </motion.button>
 
               </motion.form>
@@ -161,8 +169,8 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-xs text-gray-600 mt-6">
-          Already have an account?{" "}
-          <a href="/login" className="text-violet-500 hover:text-violet-400 transition-colors">Sign in</a>
+          {t.auth.register.hasAccount}{" "}
+          <a href="/login" className="text-violet-500 hover:text-violet-400 transition-colors">{t.auth.register.signIn}</a>
         </p>
       </motion.div>
     </div>

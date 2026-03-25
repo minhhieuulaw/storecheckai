@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnalyzingModal } from "@/components/AnalyzingModal";
 import { LoginPromptModal } from "@/components/LoginPromptModal";
+import { useTranslation } from "@/lib/i18n";
 
 const tags = ["Shopify", "Amazon", "Walmart", "Etsy", "DTC Stores", "Temu"];
 
@@ -20,6 +21,7 @@ export function Hero() {
   const [focused, setFocused] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const router = useRouter();
+  const { t, locale } = useTranslation();
 
   // Prefill URL if user comes back from login with a stored URL
   useEffect(() => {
@@ -50,7 +52,7 @@ export function Hero() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmed }),
+        body: JSON.stringify({ url: trimmed, locale }),
       });
       const data = await res.json();
       if (!data.success) {
@@ -88,24 +90,24 @@ export function Hero() {
         className="mb-7 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm"
         style={{ background: "rgba(99,102,241,0.1)", borderColor: "rgba(99,102,241,0.35)", color: "#a5b4fc" }}>
         <Sparkles className="h-3.5 w-3.5" />
-        AI Pre-Purchase Safety Check
+        {t.hero.badge}
         <span className="ml-1 flex h-1.5 w-1.5 rounded-full" style={{ background: "#6366f1", boxShadow: "0 0 8px #6366f1" }} />
       </motion.div>
 
       {/* Headline */}
       <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.1 }}
         className="max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-        Is it safe to buy{" "}
+        {t.hero.title}{" "}
         <span className="bg-clip-text text-transparent"
           style={{ backgroundImage: "linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #f472b6 100%)" }}>
-          from this store?
+          {t.hero.titleAccent}
         </span>
       </motion.h1>
 
       {/* Sub */}
       <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.18 }}
         className="mt-6 max-w-xl text-lg leading-relaxed text-gray-400">
-        Paste any product or store link. Get an AI safety report in 30 seconds — trust score, review analysis, return risk, and a clear verdict.
+        {t.hero.subtitle}
       </motion.p>
 
       {/* URL Input */}
@@ -125,7 +127,7 @@ export function Hero() {
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               onKeyDown={(e) => e.key === "Enter" && !loading && handleAnalyze()}
-              placeholder="https://store.com/product/..."
+              placeholder={t.hero.placeholder}
               disabled={loading}
               className="flex-1 bg-transparent px-4 py-3 text-white placeholder-gray-600 outline-none text-sm disabled:opacity-50"
             />
@@ -134,7 +136,7 @@ export function Hero() {
               disabled={loading}
               className="flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
               style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-              <span>Analyze this store</span>
+              <span>{t.hero.cta}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -142,13 +144,13 @@ export function Hero() {
 
         {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
 
-        <p className="mt-3 text-xs text-gray-600">Sign up free · 1 check included · Results in &lt;30s</p>
+        <p className="mt-3 text-xs text-gray-600">{t.hero.trustNote}</p>
       </motion.div>
 
       {/* Works with tags */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.5 }}
         className="mt-10 flex flex-wrap items-center justify-center gap-2">
-        <span className="text-xs text-gray-600">Works with</span>
+        <span className="text-xs text-gray-600">{t.hero.worksWithLabel}</span>
         {tags.map((tag) => (
           <span key={tag} className="rounded-full border px-3 py-1 text-xs text-gray-500"
             style={{ borderColor: "rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}>

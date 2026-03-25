@@ -58,6 +58,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     if (!user) {
       return NextResponse.json({ success: false, error: "User not found." }, { status: 401 });
     }
+    if (user.isBanned) {
+      return NextResponse.json({ success: false, error: "Your account has been suspended. Please contact support." }, { status: 403 });
+    }
 
     // ── 3. Quota check ───────────────────────────────────────────────────────
     const { success: hasQuota, remaining, plan } = await useCheck(user.id);
@@ -74,6 +77,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     // ── 4. Validate URL ──────────────────────────────────────────────────────
     const body = await req.json();
     const rawUrl = body?.url as string;
+    const locale = (body?.locale as string) || "en";
     if (!rawUrl) return NextResponse.json({ success: false, error: "URL is required." }, { status: 400 });
     const url = normalizeUrl(rawUrl);
     if (!isValidUrl(url)) return NextResponse.json({ success: false, error: "Please enter a valid URL." }, { status: 400 });
@@ -87,7 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
 
     // ── 7. AI analysis (parallel) ────────────────────────────────────────────
     const [ai, priceAnalysis] = await Promise.all([
-      analyzeWithAI(scraped, rawScore, returnRiskRules),
+      analyzeWithAI(scraped, rawScore, returnRiskRules, locale),
       planFeatures.priceAnalysis ? analyzeProductPrices(scraped.products) : Promise.resolve([]),
     ]);
 
@@ -128,6 +132,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       shippingOriginSignals: planFeatures.fullReport ? scraped.shippingOriginSignals : [],
       trustpilotRating:     planFeatures.fullReport ? scraped.trustpilotRating      : null,
       trustpilotReviewCount: planFeatures.fullReport ? scraped.trustpilotReviewCount : null,
+      trustpilotReviews:    planFeatures.fullReport ? (ai.translatedReviews?.length ? ai.translatedReviews : scraped.trustpilotReviews) : [],
       manipulationTactics:  planFeatures.fullReport ? scraped.manipulationTactics  : [],
       reviewPlatforms:      planFeatures.fullReport ? scraped.reviewPlatforms       : [],
 

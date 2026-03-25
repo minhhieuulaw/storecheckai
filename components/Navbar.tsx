@@ -4,8 +4,8 @@ import { Shield, Menu, X, LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-
-const NAV_LINKS = ["How it works", "Sample report", "Pricing", "FAQ"] as const;
+import { useTranslation } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface UserDisplay { email: string; name: string; }
 
@@ -25,6 +25,14 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [user,     setUser]     = useState<UserDisplay | null>(null);
   const router = useRouter();
+  const { t } = useTranslation();
+
+  const NAV_LINKS = [
+    { label: t.nav.howItWorks,    anchor: "how-it-works"   },
+    { label: t.nav.sampleReport,  anchor: "sample-report"  },
+    { label: t.nav.pricing,       anchor: "pricing"        },
+    { label: t.nav.faq,           anchor: "faq"            },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -46,7 +54,7 @@ export function Navbar() {
   return (
     <div className="fixed top-0 inset-x-0 z-50 flex justify-center px-4 pt-5">
       <nav
-        className="w-full max-w-4xl rounded-2xl border transition-all duration-300"
+        className="w-full max-w-5xl rounded-2xl border transition-all duration-300"
         style={{
           background: scrolled ? "rgba(7,7,15,0.88)" : "rgba(255,255,255,0.035)",
           borderColor: scrolled ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.07)",
@@ -54,10 +62,10 @@ export function Navbar() {
           WebkitBackdropFilter: "blur(24px)",
           boxShadow: scrolled ? "0 8px 32px rgba(0,0,0,0.4)" : "none",
         }}>
-        <div className="flex items-center justify-between px-5 py-3.5">
+        <div className="flex items-center gap-3 px-5 py-3.5">
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 group">
+          <a href="/" className="flex items-center gap-2.5 group shrink-0">
             <div
               className="flex h-8 w-8 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105"
               style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
@@ -67,14 +75,13 @@ export function Navbar() {
           </a>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-7 text-sm text-gray-500">
-            {NAV_LINKS.map((label) => (
+          <div className="hidden md:flex flex-1 justify-center items-center gap-4 text-sm text-gray-500">
+            {NAV_LINKS.map(({ label, anchor }) => (
               <a
-                key={label}
-                href={`#${label.toLowerCase().replace(/\s+/g, "-")}`}
-                className="relative py-1 hover:text-white transition-colors duration-200 group">
+                key={anchor}
+                href={`#${anchor}`}
+                className="relative py-1 hover:text-white transition-colors duration-200 group whitespace-nowrap">
                 {label}
-                {/* Animated underline on hover */}
                 <span
                   className="absolute bottom-0 left-0 h-px w-0 group-hover:w-full transition-all duration-200 rounded-full"
                   style={{ background: "rgba(99,102,241,0.6)" }}
@@ -85,7 +92,8 @@ export function Navbar() {
 
           {/* User info + logout / CTA */}
           {user ? (
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2 shrink-0">
+              <LanguageSwitcher compact />
               <a
                 href="/dashboard"
                 className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-gray-400 hover:text-white transition-colors"
@@ -100,22 +108,23 @@ export function Navbar() {
                 className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-gray-500 hover:text-red-400 transition-colors"
                 style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
                 <LogOut className="h-3.5 w-3.5" />
-                Logout
+                {t.nav.logout}
               </motion.button>
             </div>
           ) : (
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2 shrink-0">
+              <LanguageSwitcher />
               <a
                 href="/login"
                 className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
                 style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)" }}>
-                Sign in
+                {t.nav.signIn}
               </a>
               <a
                 href="/register"
                 className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
                 style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                Register
+                {t.nav.register}
               </a>
             </div>
           )}
@@ -124,7 +133,7 @@ export function Navbar() {
           <motion.button
             onClick={() => setOpen(!open)}
             whileTap={{ scale: 0.9 }}
-            className="md:hidden p-1.5 text-gray-400 hover:text-white transition-colors rounded-lg">
+            className="md:hidden ml-auto p-1.5 text-gray-400 hover:text-white transition-colors rounded-lg">
             <AnimatePresence mode="wait" initial={false}>
               {open ? (
                 <motion.div key="x"
@@ -158,10 +167,10 @@ export function Navbar() {
               className="md:hidden overflow-hidden border-t"
               style={{ borderColor: "rgba(255,255,255,0.06)" }}>
               <div className="px-5 py-4 flex flex-col gap-1">
-                {NAV_LINKS.map((label, i) => (
+                {NAV_LINKS.map(({ label, anchor }, i) => (
                   <motion.a
-                    key={label}
-                    href={`#${label.toLowerCase().replace(/\s+/g, "-")}`}
+                    key={anchor}
+                    href={`#${anchor}`}
                     onClick={() => setOpen(false)}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -170,6 +179,14 @@ export function Navbar() {
                     {label}
                   </motion.a>
                 ))}
+                {/* Language switcher in mobile menu */}
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: NAV_LINKS.length * 0.04, duration: 0.18 }}
+                  className="mt-1">
+                  <LanguageSwitcher />
+                </motion.div>
                 {user ? (
                   <>
                     <motion.a
@@ -177,21 +194,21 @@ export function Navbar() {
                       onClick={() => setOpen(false)}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: NAV_LINKS.length * 0.04, duration: 0.18 }}
+                      transition={{ delay: (NAV_LINKS.length + 1) * 0.04, duration: 0.18 }}
                       className="mt-2 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-300"
                       style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)" }}>
                       <User className="h-4 w-4" />
-                      Dashboard
+                      {t.nav.dashboard}
                     </motion.a>
                     <motion.button
                       onClick={() => { setOpen(false); handleLogout(); }}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: (NAV_LINKS.length + 1) * 0.04, duration: 0.18 }}
+                      transition={{ delay: (NAV_LINKS.length + 2) * 0.04, duration: 0.18 }}
                       className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-red-400"
                       style={{ border: "1px solid rgba(239,68,68,0.2)", background: "rgba(239,68,68,0.06)" }}>
                       <LogOut className="h-4 w-4" />
-                      Logout
+                      {t.nav.logout}
                     </motion.button>
                   </>
                 ) : (
@@ -201,20 +218,20 @@ export function Navbar() {
                       onClick={() => setOpen(false)}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: NAV_LINKS.length * 0.04, duration: 0.18 }}
+                      transition={{ delay: (NAV_LINKS.length + 1) * 0.04, duration: 0.18 }}
                       className="flex-1 text-center rounded-xl px-4 py-2.5 text-sm font-medium text-gray-400"
                       style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)" }}>
-                      Sign in
+                      {t.nav.signIn}
                     </motion.a>
                     <motion.a
                       href="/register"
                       onClick={() => setOpen(false)}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: (NAV_LINKS.length + 0.5) * 0.04, duration: 0.18 }}
+                      transition={{ delay: (NAV_LINKS.length + 1.5) * 0.04, duration: 0.18 }}
                       className="flex-1 text-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
                       style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                      Register
+                      {t.nav.register}
                     </motion.a>
                   </div>
                 )}

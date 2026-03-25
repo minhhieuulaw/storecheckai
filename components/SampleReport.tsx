@@ -6,6 +6,7 @@ import {
   ShieldCheck, AlertTriangle, XCircle, CheckCircle2,
   RotateCcw, Truck, CreditCard, Star, ExternalLink, ChevronDown,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 /* ── Score Ring ─────────────────────────────────────────────────────── */
 function ScoreRing({ score, color }: { score: number; color: string }) {
@@ -38,23 +39,18 @@ function FactPill({ text, color, Icon }: { text: string; color: string; Icon: Re
 }
 
 /* ── Health Bucket ──────────────────────────────────────────────────── */
-const bucketStyle = {
-  pass: { bg: "rgba(34,197,94,0.06)", border: "rgba(34,197,94,0.18)", color: "#4ade80", label: "Looking Good" },
-  warn: { bg: "rgba(234,179,8,0.06)", border: "rgba(234,179,8,0.18)", color: "#fbbf24", label: "Worth Reviewing" },
-  fail: { bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.18)", color: "#f87171", label: "Concerns" },
-};
-
-function HealthBucket({ type, signals }: { type: "pass" | "warn" | "fail"; signals: string[] }) {
+function HealthBucket({ label, bg, border, color, signals }: {
+  label: string; bg: string; border: string; color: string; signals: string[];
+}) {
   const [open, setOpen] = useState(false);
-  const s = bucketStyle[type];
   return (
     <button onClick={() => setOpen(o => !o)} className="text-left w-full rounded-2xl p-3 transition-all"
-      style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+      style={{ background: bg, border: `1px solid ${border}` }}>
       <div className="flex items-center justify-between gap-1 mb-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: s.color }}>{s.label}</span>
-        <ChevronDown className="h-3 w-3 shrink-0 transition-transform" style={{ color: s.color, transform: open ? "rotate(180deg)" : "none" }} />
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
+        <ChevronDown className="h-3 w-3 shrink-0 transition-transform" style={{ color, transform: open ? "rotate(180deg)" : "none" }} />
       </div>
-      <div className="text-xl font-bold" style={{ color: s.color }}>{signals.length}</div>
+      <div className="text-xl font-bold" style={{ color }}>{signals.length}</div>
       <AnimatePresence>
         {open && (
           <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
@@ -72,14 +68,13 @@ function HealthBucket({ type, signals }: { type: "pass" | "warn" | "fail"; signa
 
 /* ── Main Component ─────────────────────────────────────────────────── */
 export function SampleReport() {
+  const { t } = useTranslation();
+  const sr = t.sampleReport;
+
   const verdictColor = "#fbbf24";
   const verdictBg = "rgba(234,179,8,0.08)";
   const verdictBorder = "rgba(234,179,8,0.2)";
   const verdictGlow = "rgba(234,179,8,0.06)";
-
-  const passing = ["HTTPS / SSL enabled", "Contact email found", "Refund policy page exists", "Active social media presence"];
-  const warnings = ["No physical address listed", "Domain registered 8 months ago", "Limited product reviews"];
-  const failures = ["Review patterns suggest fake engagement", "Return shipping paid by customer"];
 
   return (
     <section id="sample-report" className="px-4 py-20 sm:px-6">
@@ -90,16 +85,16 @@ export function SampleReport() {
           viewport={{ once: true }} className="mb-12 text-center">
           <span className="inline-block rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest mb-5"
             style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)" }}>
-            Sample Report
+            {sr.badge}
           </span>
           <h2 className="text-3xl font-bold sm:text-4xl">
-            What you{" "}
+            {sr.heading}{" "}
             <span className="bg-clip-text text-transparent"
               style={{ backgroundImage: "linear-gradient(135deg, #818cf8, #c084fc)" }}>
-              actually get
+              {sr.headingAccent}
             </span>
           </h2>
-          <p className="mt-4 text-gray-400">Not just a number — a full breakdown.</p>
+          <p className="mt-4 text-gray-400">{sr.subtitle}</p>
         </motion.div>
 
         {/* Report wrapper */}
@@ -124,7 +119,7 @@ export function SampleReport() {
                   </div>
                 </div>
                 <div className="hidden sm:block shrink-0 text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-700">Analyzed</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-700">{sr.analyzedLabel}</p>
                   <p className="text-xs text-gray-600 mt-0.5">Mar 24, 2026</p>
                 </div>
               </div>
@@ -139,31 +134,38 @@ export function SampleReport() {
                   <AlertTriangle className="h-5 w-5" style={{ color: verdictColor }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold" style={{ color: verdictColor }}>Buy with Caution</h3>
-                  <p className="text-gray-400 text-sm mt-1 leading-relaxed">
-                    Store has basic trust signals but shows suspicious review patterns and a short domain history. Proceed carefully.
-                  </p>
+                  <h3 className="text-lg font-bold" style={{ color: verdictColor }}>{sr.verdict}</h3>
+                  <p className="text-gray-400 text-sm mt-1 leading-relaxed">{sr.verdictDesc}</p>
                 </div>
                 <div className="shrink-0 flex flex-col items-center gap-1">
                   <ScoreRing score={62} color={verdictColor} />
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-gray-700">Trust</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-gray-700">{sr.trustLabel}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <FactPill text="Medium Return Risk" color="#fb923c" Icon={RotateCcw} />
+                <FactPill text={sr.warnings[0]} color="#fb923c" Icon={RotateCcw} />
                 <FactPill text="Ships from CN" color="#fbbf24" Icon={Truck} />
                 <FactPill text="Card / PayPal" color="#4ade80" Icon={CreditCard} />
-                <FactPill text="Trust: Medium" color={verdictColor} Icon={ShieldCheck} />
+                <FactPill text={sr.buckets.warn} color={verdictColor} Icon={ShieldCheck} />
               </div>
             </div>
 
             {/* ── Health Snapshot ── */}
             <div className="grid grid-cols-3 gap-2">
-              <HealthBucket type="pass" signals={passing} />
-              <HealthBucket type="warn" signals={warnings} />
-              <HealthBucket type="fail" signals={failures} />
+              <HealthBucket
+                label={sr.buckets.pass}
+                bg="rgba(34,197,94,0.06)" border="rgba(34,197,94,0.18)" color="#4ade80"
+                signals={sr.passing} />
+              <HealthBucket
+                label={sr.buckets.warn}
+                bg="rgba(234,179,8,0.06)" border="rgba(234,179,8,0.18)" color="#fbbf24"
+                signals={sr.warnings} />
+              <HealthBucket
+                label={sr.buckets.fail}
+                bg="rgba(239,68,68,0.06)" border="rgba(239,68,68,0.18)" color="#f87171"
+                signals={sr.failures} />
             </div>
-            <p className="text-center text-[11px] text-gray-700">Tap each card to expand</p>
+            <p className="text-center text-[11px] text-gray-700">{sr.expandHint}</p>
 
             {/* ── Trustpilot ── */}
             <div className="flex items-center justify-between rounded-2xl px-4 py-3"
@@ -189,10 +191,10 @@ export function SampleReport() {
               <div className="rounded-2xl p-4"
                 style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.12)" }}>
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-green-400">
-                  <CheckCircle2 className="h-4 w-4" /> Pros
+                  <CheckCircle2 className="h-4 w-4" /> {sr.prosLabel}
                 </div>
                 <ul className="space-y-2 text-sm text-gray-300">
-                  {["Good battery life (6–8h)", "Comfortable fit", "Clear call quality", "Competitive price"].map(p => (
+                  {sr.pros.map(p => (
                     <li key={p} className="flex items-start gap-2">
                       <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-500" />{p}
                     </li>
@@ -202,10 +204,10 @@ export function SampleReport() {
               <div className="rounded-2xl p-4"
                 style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.12)" }}>
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-red-400">
-                  <XCircle className="h-4 w-4" /> Cons
+                  <XCircle className="h-4 w-4" /> {sr.consLabel}
                 </div>
                 <ul className="space-y-2 text-sm text-gray-300">
-                  {["Weak bass response", "Plastic case feels cheap", "Pairing issues on Android", "No noise cancellation"].map(c => (
+                  {sr.cons.map(c => (
                     <li key={c} className="flex items-start gap-2">
                       <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />{c}
                     </li>
@@ -218,10 +220,10 @@ export function SampleReport() {
             <div className="rounded-2xl p-4"
               style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.1)" }}>
               <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-red-400">
-                <AlertTriangle className="h-4 w-4" /> Red Flags
+                <AlertTriangle className="h-4 w-4" /> {sr.redFlagsLabel}
               </div>
               <div className="flex flex-wrap gap-2">
-                {["Repeated generic praise", "Multiple reviews same day", "Vague return wording", "New domain (< 1 year)"].map(f => (
+                {sr.redFlags.map(f => (
                   <span key={f} className="rounded-full px-3 py-1.5 text-xs font-medium"
                     style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#fca5a5" }}>
                     {f}
@@ -233,12 +235,10 @@ export function SampleReport() {
             {/* ── Final Take ── */}
             <div className="rounded-2xl px-5 py-4"
               style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.12)" }}>
-              <p className="text-sm font-semibold text-gray-200 mb-1">Should you buy it?</p>
+              <p className="text-sm font-semibold text-gray-200 mb-1">{sr.finalTakeLabel}</p>
               <p className="text-sm text-gray-400 leading-relaxed">
-                Product has decent real-use feedback, but the store is new with weak trust signals.{" "}
-                <span style={{ color: "#a5b4fc", fontWeight: 600 }}>
-                  Consider buying from a more established retailer.
-                </span>
+                {sr.finalTakeDesc}{" "}
+                <span style={{ color: "#a5b4fc", fontWeight: 600 }}>{sr.finalTakeAdvice}</span>
               </p>
             </div>
 

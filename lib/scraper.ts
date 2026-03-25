@@ -70,35 +70,91 @@ async function checkHeadRequest(url: string): Promise<HeadResult> {
   }
 }
 
-async function getTrustpilotData(domain: string): Promise<{ rating: number | null; reviewCount: number | null }> {
-  // Strip subdomains — use registrable domain only
+async function getTrustpilotData(domain: string): Promise<{ rating: number | null; reviewCount: number | null; reviews: string[] }> {
+  // Try both registrable domain and full domain
   const parts = domain.split(".");
   const registrable = parts.length >= 2 ? parts.slice(-2).join(".") : domain;
-  try {
-    const html = await fetchPage(`https://www.trustpilot.com/review/${registrable}`);
-    if (!html) return { rating: null, reviewCount: null };
-    // Extract JSON-LD aggregateRating
-    const $ = cheerio.load(html);
-    let rating: number | null = null;
-    let reviewCount: number | null = null;
-    $('script[type="application/ld+json"]').each((_, el) => {
-      try {
-        const json = JSON.parse($(el).html() || "{}");
-        const entries = Array.isArray(json) ? json : [json];
-        for (const entry of entries) {
-          const ar = entry?.aggregateRating ?? entry?.["@graph"]?.[0]?.aggregateRating;
-          if (ar?.ratingValue) {
-            rating = parseFloat(ar.ratingValue);
-            reviewCount = parseInt(ar.reviewCount ?? ar.ratingCount ?? "0", 10) || null;
-            return false; // break
+  const candidates = registrable !== domain ? [registrable, domain] : [registrable];
+
+  for (const candidate of candidates) {
+    try {
+      const html = await fetchPage(`https://www.trustpilot.com/review/${candidate}`);
+      if (!html) continue;
+
+      const $ = cheerio.load(html);
+      let rating: number | null = null;
+      let reviewCount: number | null = null;
+      const reviews: string[] = [];
+
+      // Method 1: JSON-LD aggregateRating + Review snippets
+      $('script[type="application/ld+json"]').each((_, el) => {
+        try {
+          const json = JSON.parse($(el).html() || "{}");
+          const entries = Array.isArray(json) ? json : [json];
+          for (const entry of entries) {
+            const e = entry as Record<string, unknown>;
+            const ar = (e.aggregateRating ?? (e["@graph"] as Record<string, unknown>[])?.[0]?.aggregateRating) as Record<string, unknown> | undefined;
+            if (ar?.ratingValue) {
+              rating = parseFloat(String(ar.ratingValue));
+              reviewCount = parseInt(String(ar.reviewCount ?? ar.ratingCount ?? "0"), 10) || null;
+            }
+            // Extract individual review bodies
+            if (e["@type"] === "Review" && e.reviewBody) {
+              const text = String(e.reviewBody).trim();
+              if (text.length > 20 && reviews.length < 5) reviews.push(text.slice(0, 300));
+            }
+            // @graph array may contain Reviews
+            if (Array.isArray(e["@graph"])) {
+              for (const node of e["@graph"] as Record<string, unknown>[]) {
+                if (node["@type"] === "Review" && node.reviewBody) {
+                  const text = String(node.reviewBody).trim();
+                  if (text.length > 20 && reviews.length < 5) reviews.push(text.slice(0, 300));
+                }
+              }
+            }
           }
+        } catch { /* ignore */ }
+      });
+
+      // Method 2: __NEXT_DATA__ (Trustpilot Next.js app)
+      const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if (nextDataMatch) {
+        try {
+          const nextData = JSON.parse(nextDataMatch[1]) as Record<string, unknown>;
+          const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown>;
+          // Rating from businessUnit
+          if (rating === null) {
+            const bu = pageProps?.businessUnit as Record<string, unknown> | undefined;
+            if (bu?.stars) {
+              rating = parseFloat(String(bu.stars));
+              reviewCount = parseInt(String(bu.numberOfReviews ?? "0"), 10) || null;
+            }
+          }
+          // Reviews array
+          const reviewsData = pageProps?.reviews as Array<Record<string, unknown>> | undefined;
+          if (Array.isArray(reviewsData)) {
+            for (const r of reviewsData) {
+              const text = String(r.text ?? r.content ?? r.reviewBody ?? "").trim();
+              if (text.length > 20 && reviews.length < 5) reviews.push(text.slice(0, 300));
+            }
+          }
+        } catch { /* ignore */ }
+      }
+
+      // Method 3: HTML meta/regex fallback for rating
+      if (rating === null) {
+        const ratingMatch = html.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+        const countMatch  = html.match(/"reviewCount"\s*:\s*"?(\d+)"?/);
+        if (ratingMatch) {
+          rating = parseFloat(ratingMatch[1]);
+          if (countMatch) reviewCount = parseInt(countMatch[1], 10) || null;
         }
-      } catch { /* ignore malformed JSON */ }
-    });
-    return { rating, reviewCount };
-  } catch {
-    return { rating: null, reviewCount: null };
+      }
+
+      if (rating !== null) return { rating, reviewCount, reviews };
+    } catch { /* try next candidate */ }
   }
+  return { rating: null, reviewCount: null, reviews: [] };
 }
 
 function detectManipulationTactics(html: string): string[] {
@@ -123,11 +179,47 @@ function detectManipulationTactics(html: string): string[] {
 
 function detectBusinessRegistration(text: string): { found: boolean; entityType: string | null } {
   const patterns: [RegExp, string][] = [
+    // English / US
     [/\b(LLC|L\.L\.C\.?)\b/, "LLC"],
     [/\bInc\.?\b|\bIncorporated\b/, "Inc."],
     [/\bCorp\.?\b|\bCorporation\b/, "Corp."],
     [/\bLtd\.?\b|\bLimited\b/, "Ltd."],
     [/\bCo\.\s+LLC\b|\bCo\.,?\s+Inc\b/, "Co."],
+    // German / Austrian / Swiss
+    [/\bGmbH\b|\bGmbH\s*&\s*Co\b/, "GmbH"],
+    [/\bAG\b|\bAktiengesellschaft\b/, "AG"],
+    [/\bKG\b|\bKommanditgesellschaft\b/, "KG"],
+    [/\bOHG\b/, "OHG"],
+    [/\be\.K\.\b|\be\.Kfm\.\b/, "e.K."],
+    // French
+    [/\bSAS\b|\bS\.A\.S\.\b/, "SAS"],
+    [/\bSARL\b|\bS\.A\.R\.L\.\b/, "SARL"],
+    [/\bSA\b|\bS\.A\.\b/, "SA"],
+    [/\bEURL\b/, "EURL"],
+    [/\bSCI\b/, "SCI"],
+    // Spanish / Portuguese
+    [/\bS\.L\.\b|\bSociedad\s+Limitada\b/, "S.L."],
+    [/\bS\.A\.\b|\bSociedad\s+An[oó]nima\b/, "S.A."],
+    [/\bLda\.?\b|\bLimitada\b/, "Lda."],
+    [/\bME\b|\bMicroempresa\b/, "ME"],
+    // Dutch / Belgian
+    [/\bB\.V\.\b|\bBV\b|\bBesloten\s+Vennootschap\b/, "B.V."],
+    [/\bN\.V\.\b|\bNV\b|\bNaamloze\s+Vennootschap\b/, "N.V."],
+    // Nordic
+    [/\bA\/S\b|\bAktieselskab\b|\bAksjeselskap\b/, "A/S"],
+    [/\bAB\b|\bAktiebolag\b/, "AB"],
+    [/\bOy\b|\bOsakeyhti[oö]\b/, "Oy"],
+    // Polish / Czech / Slovak
+    [/\bSp\.\s*z\s*o\.o\.\b|\bspółka\s+z\s+ograniczoną\b/i, "Sp. z o.o."],
+    [/\bs\.r\.o\.\b|\bspolečnost\s+s\s+ručením/i, "s.r.o."],
+    // Asian (very common for Shopify stores shipping from Asia)
+    [/\bCo\.,?\s*Ltd\.?\b|\bCo\.,?\s*LTD\.?\b/, "Co., Ltd."],
+    [/\bPte\.\s*Ltd\.?\b/, "Pte. Ltd."],
+    [/\bPty\.\s*Ltd\.?\b/, "Pty. Ltd."],
+    [/\b有限公司\b/, "有限公司"],
+    [/\b株式会社\b|\b合同会社\b/, "KK/LLC (JP)"],
+    [/\b주식회사\b|\b유한회사\b/, "주식회사 (KR)"],
+    [/\bCông\s+ty\b|\bCTCP\b|\bCTTNHH\b/i, "Công ty (VN)"],
   ];
   for (const [re, label] of patterns) {
     if (re.test(text)) return { found: true, entityType: label };
@@ -205,25 +297,71 @@ function extractEmail(text: string): string | null {
 }
 
 function hasPhonePattern(text: string): boolean {
-  return /(\+1[-.\\s]?)?\(?\d{3}\)?[-.\\s]?\d{3}[-.\\s]?\d{4}/.test(text);
+  return (
+    // US/Canada: (123) 456-7890 or +1-800-000-0000
+    /(\+1[-.\\s]?)?\(?\d{3}\)?[-.\\s]?\d{3}[-.\\s]?\d{4}/.test(text) ||
+    // International with country code: +33 1 23 45 67 89, +84 901 234 567, etc.
+    /\+\d{1,3}[\s.-]?\(?\d{1,4}\)?[\s.-]?\d{2,4}[\s.-]?\d{2,4}[\s.-]?\d{2,4}/.test(text) ||
+    // European format: 06 12 34 56 78, 0612 34 5678
+    /\b0\d{1,2}[\s.-]\d{2}[\s.-]\d{2}[\s.-]\d{2}[\s.-]\d{2}\b/.test(text) ||
+    // Vietnamese: 090 123 4567, 0901.234.567
+    /\b(0[3-9]\d{1})[.\s-]?\d{3}[.\s-]?\d{4}\b/.test(text)
+  );
 }
 
 function hasAddressPattern(text: string): boolean {
-  return /\d{1,5}\s+\w+\s+(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|way|ct|court)/i.test(text);
+  return (
+    // US street address
+    /\d{1,5}\s+\w+\s+(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|way|ct|court)/i.test(text) ||
+    // US/CA zip: 5-digit or ZIP+4
+    /\b[A-Z]{2}\s+\d{5}(-\d{4})?\b/.test(text) ||
+    // European postal code (DE: 12345, FR: 75001, NL: 1234 AB, UK: SW1A 1AA)
+    /\b\d{4,5}\s+[A-Z][a-z]|\b[A-Z]{1,2}\d{1,2}\s*\d[A-Z]{2}\b/.test(text) ||
+    // City + country patterns common in legal pages
+    /Albuquerque|New Mexico|New York|Los Angeles|London|Paris|Berlin|Amsterdam/i.test(text) ||
+    // Vietnamese address patterns
+    /(?:phường|quận|huyện|tỉnh|thành phố|đường|số)\s+\w/i.test(text) ||
+    // Generic: number + street-like word in multiple languages
+    /\d+[,\s]+(rue|avenue|boulevard|strasse|straße|via|calle|rua|đường|路|街)\s+/i.test(text)
+  );
 }
 
-function extractSocialLinks($: cheerio.CheerioAPI): string[] {
-  const platforms = ["facebook.com", "instagram.com", "twitter.com", "x.com", "tiktok.com", "youtube.com", "pinterest.com", "linkedin.com"];
+function extractSocialLinks($: cheerio.CheerioAPI, html?: string): string[] {
+  const platforms: [string, string][] = [
+    ["facebook.com", "facebook"],
+    ["instagram.com", "instagram"],
+    ["twitter.com", "twitter"],
+    ["x.com/", "twitter"],
+    ["tiktok.com", "tiktok"],
+    ["youtube.com", "youtube"],
+    ["pinterest.com", "pinterest"],
+    ["linkedin.com", "linkedin"],
+    ["snapchat.com", "snapchat"],
+  ];
   const found = new Set<string>();
+
+  // Method 1: anchor hrefs
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") || "";
-    for (const p of platforms) {
-      if (href.includes(p)) {
-        found.add(p.replace(".com", ""));
-        break;
-      }
+    for (const [pattern, label] of platforms) {
+      if (href.includes(pattern)) { found.add(label); break; }
     }
   });
+
+  // Method 2: raw HTML scan (catches JS-injected or SVG icon links)
+  if (html) {
+    for (const [pattern, label] of platforms) {
+      if (html.includes(pattern)) found.add(label);
+    }
+    // og:see_also meta
+    const seeAlsoMatches = html.matchAll(/property=["']og:see_also["'][^>]*content=["']([^"']+)/gi);
+    for (const m of seeAlsoMatches) {
+      for (const [pattern, label] of platforms) {
+        if (m[1].includes(pattern)) found.add(label);
+      }
+    }
+  }
+
   return Array.from(found);
 }
 
@@ -265,8 +403,10 @@ function scoreAboutQuality(text: string): number {
   if (!text || text.length < 100) return 0;
   let score = 1; // Exists
   if (text.length > 500) score++;
-  if (/founded|established|since\s+\d{4}|started\s+in/i.test(text)) score++;
-  if (/team|staff|founder|owner|mission|values|story|family/i.test(text)) score++;
+  // Founded/established patterns — multilingual
+  if (/founded|established|since\s+\d{4}|started\s+in|gegründet|fondé|fundad[ao]|fondato|opgericht|基立|設立|창립|thành lập/i.test(text)) score++;
+  // Team/mission patterns — multilingual
+  if (/team|staff|founder|owner|mission|values|story|family|équipe|gründer|equipo|fundador|squadra|團隊|团队|チーム|팀|đội ngũ/i.test(text)) score++;
   return Math.min(3, score);
 }
 
@@ -285,6 +425,15 @@ function detectShippingOrigin(text: string): { shipsFromUS: boolean | null; sign
     "3-5 weeks", "4-6 weeks", "2-4 weeks", "allow 3", "allow 4",
     "epacket", "china post", "international warehouse", "overseas warehouse",
     "transit time 15", "transit time 20", "transit time 25",
+    // French long-distance signals
+    "livraison en 3", "livraison en 4", "livraison en 5", "livraison en 6",
+    "jours ouvrés", "jours ouvrables", "semaines",
+    // German
+    "werktage", "wochen",
+    // Spanish
+    "días hábiles", "semanas",
+    // Vietnamese
+    "ngày làm việc",
   ];
 
   let usHits = 0, intlHits = 0;
@@ -523,6 +672,7 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
     // Tier 2
     trustpilotRating: null,
     trustpilotReviewCount: null,
+    trustpilotReviews: [],
     manipulationTactics: [],
     hasCookieConsent: false,
     hasBusinessRegistration: false,
@@ -556,8 +706,8 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
     mainHtml.includes("Shopify.shop") ||
     $('meta[name="shopify-digital-wallet"]').length > 0;
 
-  // Social links
-  base.socialLinks = extractSocialLinks($);
+  // Social links — scan both parsed DOM and raw HTML
+  base.socialLinks = extractSocialLinks($, mainHtml);
   base.hasSocialLinks = base.socialLinks.length > 0;
 
   // Phone + address from main page
@@ -580,13 +730,100 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
   base.hasBusinessRegistration = bizReg.found;
   base.businessEntityType = bizReg.entityType;
 
-  // Find policy/page URLs from nav/footer
-  const returnUrl = findLinks($, baseUrl, ["return", "refund"]);
-  const privacyUrl = findLinks($, baseUrl, ["privacy"]);
-  const termsUrl = findLinks($, baseUrl, ["terms", "conditions"]);
-  const contactUrl = findLinks($, baseUrl, ["contact", "support", "help"]);
-  const shippingUrl = findLinks($, baseUrl, ["shipping", "delivery"]);
-  const aboutUrl = findLinks($, baseUrl, ["about", "our-story", "who-we-are"]);
+  // ── Multilingual policy link keywords ──────────────────────────────────────
+  // Covers EN, FR, DE, ES, PT, VI, ZH, JA, KO, NL, IT, PL
+  const KW_RETURN = [
+    // EN
+    "return", "refund",
+    // FR
+    "retour", "remboursement",
+    // DE
+    "ruckgabe", "rücksendung", "widerruf",
+    // ES
+    "devolucion", "devolución", "reembolso",
+    // PT
+    "devolucao", "devolução",
+    // VI
+    "doi-tra", "hoan-tien", "chinh-sach-doi",
+    // ZH
+    "退换", "退款", "退货",
+    // JA
+    "返品", "返金",
+    // KO
+    "반품", "환불",
+    // IT
+    "reso", "rimborso", "restituzione",
+    // PL
+    "zwrot",
+    // NL
+    "terugsturen",
+  ];
+  const KW_PRIVACY = [
+    "privacy",
+    "confidentialite", "confidentialité",   // FR
+    "datenschutz",                           // DE
+    "privacidad",                            // ES
+    "privacidade",                           // PT
+    "bao-mat", "bảo-mật",                   // VI
+    "隐私", "隱私", "個人情報", "개인정보",    // ZH/JA/KO
+    "riservatezza",                          // IT
+    "prywatnosc",                            // PL
+  ];
+  const KW_TERMS = [
+    "terms", "conditions", "tos",
+    "cgv", "mentions-legales", "conditions-generales",  // FR
+    "agb", "nutzungsbedingungen",                       // DE
+    "terminos", "términos", "condiciones",              // ES
+    "termos", "condicoes",                              // PT
+    "dieu-khoan", "điều-khoản",                         // VI
+    "条款", "條款", "利用規約", "이용약관",               // ZH/JA/KO
+    "voorwaarden",                                      // NL
+    "regolamento", "termini",                           // IT
+    "regulamin",                                        // PL
+  ];
+  const KW_CONTACT = [
+    "contact", "support", "help", "customer-service", "customer-care",
+    "assistance", "aide",                   // FR
+    "kontakt", "hilfe",                     // DE
+    "contacto", "ayuda",                    // ES
+    "contato", "ajuda",                     // PT
+    "lien-he", "ho-tro",                    // VI
+    "联系", "聯繫", "客服", "お問い合わせ", "문의",  // ZH/JA/KO
+    "hulp",                                 // NL
+    "contatto", "aiuto",                    // IT
+    "pomoc",                                // PL
+  ];
+  const KW_SHIPPING = [
+    "shipping", "delivery", "dispatch",
+    "livraison", "expedition", "expédition",  // FR
+    "versand", "lieferung",                   // DE
+    "envio", "envío", "entrega",              // ES
+    "frete",                                  // PT
+    "van-chuyen", "giao-hang",               // VI
+    "运费", "配送", "快递", "配送", "発送", "배송",  // ZH/JA/KO
+    "verzending", "levering",                 // NL
+    "spedizione", "consegna",                 // IT
+    "wysylka", "dostawa",                     // PL
+  ];
+  const KW_ABOUT = [
+    "about", "our-story", "who-we-are", "our-brand",
+    "a-propos", "qui-sommes-nous", "notre-histoire",  // FR
+    "uber-uns", "über-uns",                           // DE
+    "sobre-nosotros", "quienes-somos",                // ES
+    "sobre-nos", "quem-somos",                        // PT
+    "ve-chung-toi", "gioi-thieu",                     // VI
+    "关于我们", "關於我們", "会社概要", "회사소개",       // ZH/JA/KO
+    "over-ons",                                       // NL
+    "chi-siamo",                                      // IT
+    "o-nas",                                          // PL
+  ];
+
+  const returnUrl  = findLinks($, baseUrl, KW_RETURN);
+  const privacyUrl = findLinks($, baseUrl, KW_PRIVACY);
+  const termsUrl   = findLinks($, baseUrl, KW_TERMS);
+  const contactUrl = findLinks($, baseUrl, KW_CONTACT);
+  const shippingUrl = findLinks($, baseUrl, KW_SHIPPING);
+  const aboutUrl   = findLinks($, baseUrl, KW_ABOUT);
 
   // Fetch all policy pages + security/redirect check + Trustpilot + domain age + products in parallel
   const [returnHtml, privacyHtml, termsHtml, contactHtml, shippingHtml, aboutHtml, headResult, trustpilot, domainAge, shopifyProducts] = await Promise.all([
@@ -609,6 +846,7 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
   base.redirectsToNewDomain = headResult.redirectsToNewDomain;
   base.trustpilotRating = trustpilot.rating;
   base.trustpilotReviewCount = trustpilot.reviewCount;
+  base.trustpilotReviews = trustpilot.reviews;
   base.domainAgeDays = domainAge.ageDays;
   base.domainCreatedAt = domainAge.createdAt;
 
@@ -617,9 +855,18 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
     const $r = cheerio.load(returnHtml);
     base.returnPolicyText = $r("body").text().replace(/\s+/g, " ").trim().slice(0, 2000);
   } else {
-    // Check if content exists on main page itself
+    // Check if content exists on main page itself — multilingual
     const bodyText = mainText.toLowerCase();
-    if (bodyText.includes("return policy") || bodyText.includes("refund policy")) {
+    const returnSignals = [
+      "return policy", "refund policy",
+      "politique de retour", "politique de remboursement",  // FR
+      "rückgaberecht", "rückgabebedingungen", "widerruf",   // DE
+      "política de devolución", "política de reembolso",    // ES
+      "política de devolução",                              // PT
+      "chính sách đổi trả", "chính sách hoàn tiền",        // VI
+      "退换政策", "退款政策", "返品ポリシー", "반품 정책",   // ZH/JA/KO
+    ];
+    if (returnSignals.some(s => bodyText.includes(s))) {
       base.hasReturnPolicy = true;
       base.returnPolicyText = mainText.slice(0, 2000);
     }
@@ -634,14 +881,43 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
     const $s = cheerio.load(shippingHtml);
     const shippingText = $s("body").text().replace(/\s+/g, " ").trim();
     base.shippingPolicyText = shippingText.slice(0, 2000);
-    // Detect shipping origin from policy page
     const originResult = detectShippingOrigin(shippingText);
     base.shipsFromUS = originResult.shipsFromUS;
     base.shippingOriginSignals = originResult.signals;
   } else {
-    // Try detecting from main page text
+    // Detect from main page text — multilingual policy keywords
     const bodyText = mainText.toLowerCase();
-    if (bodyText.includes("shipping policy") || bodyText.includes("shipping information")) {
+    const shippingPolicySignals = [
+      "shipping policy", "shipping information", "delivery policy",
+      "politique de livraison", "politique d'expédition",
+      "versandrichtlinien", "versandinformation",
+      "política de envío", "información de envío",
+      "política de envio", "informações de envio",
+      "chính sách vận chuyển", "chính sách giao hàng",
+      "运费政策", "配送ポリシー", "배송 정책",
+    ];
+    // Also detect if main page contains actual delivery timeframe content
+    const deliveryContentSignals = [
+      // EN
+      /delivers?\s+in\s+\d|ships?\s+in\s+\d|arrives?\s+in\s+\d|estimated\s+delivery/i,
+      // FR — "livraison en X jours", "livraison rapide", "jours ouvrés"
+      /livraison\s+(rapide|gratuite|express|en\s+\d|standard)/i,
+      /\d+\s*(à|-)\s*\d+\s*jours?\s*(ouvrés?|ouvrables?|calendaires?)/i,
+      // DE
+      /lieferung\s+in\s+\d|versand\s+in\s+\d|\d+\s*-\s*\d+\s*werktage/i,
+      // ES
+      /entrega\s+en\s+\d|\d+\s*(a|-)\s*\d+\s*días?\s*hábiles/i,
+      // PT
+      /entrega\s+em\s+\d|\d+\s*(a|-)\s*\d+\s*dias?\s*úteis/i,
+      // VI
+      /giao\s+hàng\s+trong\s+\d|\d+\s*-\s*\d+\s*ngày\s*làm\s*việc/i,
+      // Generic: "X-Y business days", "X-Y days delivery"
+      /\d+\s*[-–]\s*\d+\s*(business\s+days?|working\s+days?|days?\s+delivery)/i,
+    ];
+    if (
+      shippingPolicySignals.some(s => bodyText.includes(s)) ||
+      deliveryContentSignals.some(r => r.test(mainText))
+    ) {
       base.hasShippingPolicy = true;
       base.shippingPolicyText = mainText.slice(0, 2000);
     }
@@ -657,10 +933,8 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
     const aboutText = $a("body").text().replace(/\s+/g, " ").trim();
     base.aboutText = aboutText.slice(0, 1500);
     base.aboutQualityScore = scoreAboutQuality(aboutText);
-    // Also check for extra payment methods on about page
     const extraMethods = detectPaymentMethods(aboutHtml);
-    const combined = new Set([...base.paymentMethods, ...extraMethods]);
-    base.paymentMethods = Array.from(combined);
+    base.paymentMethods = Array.from(new Set([...base.paymentMethods, ...extraMethods]));
   }
 
   if (contactHtml) {
@@ -673,6 +947,33 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
     }
     if (!base.hasPhoneNumber) base.hasPhoneNumber = hasPhonePattern(contactText);
     if (!base.hasAddress) base.hasAddress = hasAddressPattern(contactText);
+  }
+
+  // Scan legal/terms/privacy pages for business registration info (e.g. French "Mentions légales")
+  const legalPagesText = [termsHtml, privacyHtml]
+    .filter(Boolean)
+    .map(html => {
+      const $p = cheerio.load(html!);
+      return $p("body").text();
+    })
+    .join(" ");
+  if (legalPagesText.length > 0) {
+    if (!base.hasBusinessRegistration) {
+      const bizReg = detectBusinessRegistration(legalPagesText);
+      if (bizReg.found) {
+        base.hasBusinessRegistration = true;
+        base.businessEntityType = bizReg.entityType;
+      }
+    }
+    if (!base.contactEmail) {
+      const emailFromLegal = extractEmail(legalPagesText);
+      if (emailFromLegal) {
+        base.contactEmail = emailFromLegal;
+        base.hasEmailAddress = true;
+      }
+    }
+    if (!base.hasAddress) base.hasAddress = hasAddressPattern(legalPagesText);
+    if (!base.hasPhoneNumber) base.hasPhoneNumber = hasPhonePattern(legalPagesText);
   }
 
   // Email domain match check (after contact page, so email is finalized)

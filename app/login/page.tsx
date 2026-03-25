@@ -4,11 +4,14 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const from = params.get("from") ?? "/dashboard";
+  const { t } = useTranslation();
 
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
@@ -33,11 +36,11 @@ function LoginForm() {
         body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await res.json() as { success?: boolean; error?: string };
-      if (!data.success) { setError(data.error ?? "Login failed."); return; }
+      if (!data.success) { setError(data.error ?? t.auth.login.loginFailed); return; }
       router.push(from);
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError(t.auth.login.networkError);
     } finally {
       setLoading(false);
     }
@@ -50,6 +53,11 @@ function LoginForm() {
       transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
       className="w-full max-w-md">
 
+      {/* Language switcher */}
+      <div className="flex justify-end mb-4">
+        <LanguageSwitcher />
+      </div>
+
       {/* Logo */}
       <div className="flex flex-col items-center mb-8">
         <div
@@ -58,7 +66,7 @@ function LoginForm() {
           <Shield className="h-6 w-6 text-white" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">StorecheckAI</h1>
-        <p className="text-sm text-gray-500 mt-1">Sign in to access your dashboard</p>
+        <p className="text-sm text-gray-500 mt-1">{t.auth.login.subtitle}</p>
       </div>
 
       {/* Card */}
@@ -74,7 +82,7 @@ function LoginForm() {
 
           {/* Email */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Email</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">{t.auth.login.emailLabel}</label>
             <input
               type="email"
               value={email}
@@ -92,7 +100,12 @@ function LoginForm() {
 
           {/* Password */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Password</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">{t.auth.login.passwordLabel}</label>
+              <a href="/forgot-password" className="text-xs text-violet-500 hover:text-violet-400 transition-colors">
+                {t.auth.login.forgotPassword}
+              </a>
+            </div>
             <div className="relative">
               <input
                 type={showPw ? "text" : "password"}
@@ -140,15 +153,15 @@ function LoginForm() {
             whileTap={{ scale: 0.98 }}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-2"
             style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Signing in…</> : "Sign in"}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" />{t.auth.login.submitting}</> : t.auth.login.submit}
           </motion.button>
 
         </form>
       </div>
 
       <p className="text-center text-xs text-gray-600 mt-6">
-        Don&apos;t have an account?{" "}
-        <a href="/register" className="text-violet-500 hover:text-violet-400 transition-colors">Create account</a>
+        {t.auth.login.noAccount}{" "}
+        <a href="/register" className="text-violet-500 hover:text-violet-400 transition-colors">{t.auth.login.createAccount}</a>
       </p>
     </motion.div>
   );

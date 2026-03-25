@@ -18,15 +18,6 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
   const body   = await req.json().catch(() => ({})) as { embedded?: boolean };
 
-  if (body.embedded) {
-    const portal = await stripe.billingPortal.sessions.create({
-      customer:   user.stripeCustomerId,
-      return_url: `${appUrl}/dashboard/billing`,
-      ui_mode:    "embedded",
-    });
-    return NextResponse.json({ clientSecret: portal.client_secret });
-  }
-
   const portal = await stripe.billingPortal.sessions.create({
     customer:   user.stripeCustomerId,
     return_url: `${appUrl}/dashboard/billing`,

@@ -22,9 +22,14 @@ export interface AIAnalysis {
   whoShouldAvoid: string;
   finalTake: string;
   trustScoreAdjustment: number;
+  translatedReviews: string[];
 }
 
-const SYSTEM_PROMPT = `You are StorecheckAI, a shopping safety analyst for US consumers.
+const LOCALE_LANGUAGE: Record<string, string> = {
+  en: "English", fr: "French", de: "German", es: "Spanish", pt: "Portuguese", it: "Italian",
+};
+
+const SYSTEM_PROMPT_BASE = `You are StorecheckAI, a shopping safety analyst for US consumers.
 Your job: analyze online store data and give honest, actionable safety assessments.
 Rules:
 - Be direct and specific. Never vague.
@@ -32,9 +37,16 @@ Rules:
 - For suspicious patterns use: "unusual patterns", "low-confidence signals", "raises questions"
 - Always output valid JSON — nothing else, no markdown.`;
 
-export async function analyzeWithAI(data: ScrapedData, trustScore: number, returnRiskFromRules: RiskLevel): Promise<AIAnalysis> {
+export async function analyzeWithAI(data: ScrapedData, trustScore: number, returnRiskFromRules: RiskLevel, locale = "en"): Promise<AIAnalysis> {
+  const language = LOCALE_LANGUAGE[locale] ?? "English";
   const secHdrs = data.securityHeaders;
   const headerCount = [secHdrs.hsts, secHdrs.xFrameOptions, secHdrs.csp, secHdrs.xContentTypeOptions].filter(Boolean).length;
+
+  const SYSTEM_PROMPT = language === "English"
+    ? SYSTEM_PROMPT_BASE
+    : `${SYSTEM_PROMPT_BASE}\n- IMPORTANT: Write ALL text values in your JSON response in ${language}. This includes verdictReason, returnSummary, pros, cons, complaints, redFlags, suspiciousSignals, whoShouldBuy, whoShouldAvoid, finalTake, and translatedReviews.`;
+
+  const reviewsExist = data.trustpilotReviews && data.trustpilotReviews.length > 0;
 
   const prompt = `Analyze this online store for a US shopper and return JSON.
 
@@ -62,6 +74,7 @@ STORE DATA:
 - Social links: ${data.socialLinks.length > 0 ? data.socialLinks.join(", ") : "None"}
 - Domain age: ${data.domainAgeDays !== null ? `${data.domainAgeDays} days (${(data.domainAgeDays / 365).toFixed(1)} years)` : "Unknown"}
 - Trustpilot: ${data.trustpilotRating !== null ? `${data.trustpilotRating.toFixed(1)}/5 (${data.trustpilotReviewCount ?? 0} reviews)` : "Not found"}
+${reviewsExist ? `- Trustpilot review snippets:\n${data.trustpilotReviews!.slice(0, 4).map((r, i) => `  ${i + 1}. "${r}"`).join("\n")}` : ""}
 - Business registration: ${data.hasBusinessRegistration ? `Yes (${data.businessEntityType})` : "No"}
 - On-site review platform: ${data.hasSiteReviews ? data.reviewPlatforms.join(", ") : "None"}
 - Cookie consent: ${data.hasCookieConsent ? "Yes" : "No"}
@@ -86,7 +99,8 @@ Return ONLY this JSON (no markdown, no explanation):
   "whoShouldBuy": "1-2 sentences describing ideal buyer for this store",
   "whoShouldAvoid": "1-2 sentences describing who should avoid this store",
   "finalTake": "2-3 sentences of honest, direct shopping advice",
-  "trustScoreAdjustment": 0
+  "trustScoreAdjustment": 0,
+  "translatedReviews": ${reviewsExist ? `["each Trustpilot snippet translated to ${language}"]` : "[]"}
 }`;
 
   try {
@@ -120,6 +134,7 @@ Return ONLY this JSON (no markdown, no explanation):
       whoShouldAvoid: parsed.whoShouldAvoid || "",
       finalTake: parsed.finalTake || "",
       trustScoreAdjustment: typeof parsed.trustScoreAdjustment === "number" ? Math.max(-10, Math.min(10, parsed.trustScoreAdjustment)) : 0,
+      translatedReviews: Array.isArray(parsed.translatedReviews) ? parsed.translatedReviews.slice(0, 4) : [],
     };
   } catch (err) {
     console.error("OpenAI analysis failed:", err);
@@ -153,6 +168,7 @@ function buildFallbackAnalysis(data: ScrapedData, trustScore: number, returnRisk
     whoShouldAvoid: trustScore < 50 ? "Anyone uncomfortable with limited store transparency." : "Shoppers needing guaranteed easy returns.",
     finalTake: trustScore >= 65 ? "This store appears legitimate. Proceed with normal caution." : trustScore >= 40 ? "Exercise caution. Verify the store before purchasing." : "Too many trust signals are missing. We recommend looking elsewhere.",
     trustScoreAdjustment: 0,
+    translatedReviews: [],
   };
 }
 
@@ -189,16 +205,17 @@ Return ONLY this JSON (no markdown):
   "identifiedAs": "specific product type you see in the image",
   "amazonPrice": "typical retail price range on Amazon USA, e.g. $20-35, or null if unknown",
   "aliexpressPrice": "typical wholesale/dropship price on AliExpress, e.g. $4-8, or null if unknown",
-  "markupNote": "markup ratio vs AliExpress if clearly identifiable, e.g. '~4x AliExpress price', or null",
+  "temuPrice": "typical price range on Temu, e.g. $3-7, or null if unknown",
+  "markupNote": "markup ratio vs Amazon retail if store price is clearly above it, e.g. '~2x Amazon price', or null",
   "priceVerdict": "cheap" | "fair" | "overpriced" | "marked_up",
-  "explanation": "one direct sentence comparing the store price to the Amazon retail and AliExpress wholesale prices"
+  "explanation": "one direct sentence comparing the store price to Amazon retail (primary) and AliExpress/Temu wholesale (reference)"
 }
 
 Verdict rules:
 - "cheap"     = store price is below typical Amazon retail (genuinely good deal)
 - "fair"      = store price is within normal Amazon retail range
-- "overpriced"= store price is 30–100% above Amazon retail but no extreme markup
-- "marked_up" = store price is 2x or more above AliExpress wholesale (classic dropshipping margin)
+- "overpriced"= store price is 30–100% above Amazon retail
+- "marked_up" = store price is 2x or more above Amazon retail (extreme markup)
 - If image is unclear, base on product name only`,
             },
           ],
@@ -211,6 +228,7 @@ Verdict rules:
         identifiedAs?: string;
         amazonPrice?: string | null;
         aliexpressPrice?: string | null;
+        temuPrice?: string | null;
         markupNote?: string | null;
         priceVerdict?: string;
         explanation?: string;
@@ -221,12 +239,14 @@ Verdict rules:
         ? raw.priceVerdict as PriceAnalysis["priceVerdict"]
         : "fair";
 
+      const searchTerm = encodeURIComponent(raw.identifiedAs || product.name);
       return {
         productName: product.name,
         storePrice: product.priceUsd != null ? `$${product.priceUsd}` : (product.price ?? "Unknown"),
         identifiedAs: raw.identifiedAs || product.name,
         estimatedMarketPrice: raw.amazonPrice || "Unknown",
         aliexpressPrice: raw.aliexpressPrice || null,
+        temuPrice: raw.temuPrice || null,
         markupNote: raw.markupNote || null,
         priceVerdict: verdict,
         explanation: raw.explanation || "",
@@ -234,8 +254,9 @@ Verdict rules:
         googleLensUrl: product.image
           ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}`
           : null,
-        amazonSearchUrl: `https://www.amazon.com/s?k=${encodeURIComponent(raw.identifiedAs || product.name)}`,
-        aliexpressSearchUrl: `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(raw.identifiedAs || product.name)}`,
+        amazonSearchUrl: `https://www.amazon.com/s?k=${searchTerm}`,
+        aliexpressSearchUrl: `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`,
+        temuSearchUrl: `https://www.temu.com/search_result.html?search_key=${searchTerm}`,
       };
     })
   );

@@ -52,13 +52,18 @@ export default async function DashboardPage() {
 
   const firstName  = user.name.split(" ")[0];
   const planInfo   = PLAN_LABELS[user.plan] ?? PLAN_LABELS.free;
-  const isLowQuota = user.checksRemaining <= 2;
+  const checks     = user.checksRemaining;
+  const isOut      = checks === 0;
+  const isLow      = checks > 0 && checks <= 2;
+  const checksColor = isOut ? "#f87171" : isLow ? "#fb923c" : "#e5e7eb";
+  const checksBg    = isOut ? "rgba(239,68,68,0.08)"  : isLow ? "rgba(251,146,60,0.08)" : "rgba(255,255,255,0.04)";
+  const checksBorder = isOut ? "rgba(239,68,68,0.3)"  : isLow ? "rgba(251,146,60,0.25)" : "rgba(255,255,255,0.09)";
 
   return (
     <div className="px-8 py-8 max-w-5xl mx-auto">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-white">Welcome back, {firstName} 👋</h1>
           <p className="text-sm text-gray-500 mt-1">Here&apos;s an overview of your store checks.</p>
@@ -70,27 +75,55 @@ export default async function DashboardPage() {
             <Zap className="h-3.5 w-3.5" style={{ color: planInfo.color }} />
             <span className="text-xs font-semibold" style={{ color: planInfo.color }}>{planInfo.label}</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-xl px-3 py-2"
-            style={{
-              background: isLowQuota ? "rgba(248,113,113,0.08)" : "rgba(255,255,255,0.04)",
-              border: isLowQuota ? "1px solid rgba(248,113,113,0.25)" : "1px solid rgba(255,255,255,0.07)",
-            }}>
-            <span className="text-sm font-bold" style={{ color: isLowQuota ? "#f87171" : "#e5e7eb" }}>
-              {user.checksRemaining}
-            </span>
-            <span className="text-xs text-gray-500">checks left</span>
+
+          {/* Checks remaining — prominent card */}
+          <div className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5"
+            style={{ background: checksBg, border: `1px solid ${checksBorder}` }}>
+            {isOut ? (
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: checksColor }} />
+            ) : (
+              <Zap className="h-4 w-4 shrink-0" style={{ color: checksColor }} />
+            )}
+            <div className="flex flex-col leading-none">
+              <span className="text-xl font-extrabold" style={{ color: checksColor }}>{checks}</span>
+              <span className="text-[10px] text-gray-500 mt-0.5">checks left</span>
+            </div>
+            {(isOut || isLow) && (
+              <Link href="/dashboard/billing"
+                className="ml-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white transition-all hover:opacity-90 shrink-0"
+                style={{ background: isOut ? "linear-gradient(135deg,#ef4444,#dc2626)" : "linear-gradient(135deg,#f97316,#ea580c)" }}>
+                {isOut ? "Upgrade now" : "Top up"}
+              </Link>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Low quota warning */}
-      {isLowQuota && (
+      {/* Out of checks banner */}
+      {isOut && (
         <div className="mb-6 flex items-center justify-between rounded-2xl px-5 py-4"
-          style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+          style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.22)" }}>
           <div className="flex items-center gap-2.5">
-            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-            <p className="text-sm text-amber-300">
-              {user.checksRemaining === 0 ? "You've run out of checks." : `Only ${user.checksRemaining} check${user.checksRemaining > 1 ? "s" : ""} remaining.`}{" "}
+            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+            <p className="text-sm text-red-300">
+              You&apos;ve run out of checks.{" "}
+              <span className="text-gray-400">Upgrade your plan to keep analyzing stores.</span>
+            </p>
+          </div>
+          <Link href="/dashboard/billing"
+            className="shrink-0 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
+            Upgrade now
+          </Link>
+        </div>
+      )}
+      {isLow && (
+        <div className="mb-6 flex items-center justify-between rounded-2xl px-5 py-4"
+          style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.2)" }}>
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
+            <p className="text-sm text-orange-300">
+              Only {checks} check{checks > 1 ? "s" : ""} remaining.{" "}
               <span className="text-gray-400">Upgrade to keep analyzing stores.</span>
             </p>
           </div>

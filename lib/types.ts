@@ -17,13 +17,15 @@ export interface PriceAnalysis {
   identifiedAs: string;
   estimatedMarketPrice: string;  // Amazon retail range (primary reference)
   aliexpressPrice: string | null; // AliExpress wholesale/dropship range
-  markupNote: string | null;     // e.g. "~4x AliExpress price"
+  temuPrice: string | null;      // Temu price range reference
+  markupNote: string | null;     // e.g. "~2x Amazon price"
   priceVerdict: PriceVerdict;
   explanation: string;
   imageUrl: string | null;
   googleLensUrl: string | null;
   amazonSearchUrl: string;
   aliexpressSearchUrl: string;
+  temuSearchUrl: string;
 }
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 export type SignalStatus = "pass" | "warn" | "fail" | "unknown";
@@ -80,6 +82,7 @@ export interface ScrapedData {
   // Tier 2 additions
   trustpilotRating: number | null;
   trustpilotReviewCount: number | null;
+  trustpilotReviews: string[];          // top review snippets (max 5)
   manipulationTactics: string[];
   hasCookieConsent: boolean;
   hasBusinessRegistration: boolean;
@@ -126,6 +129,7 @@ export interface Report {
   shippingOriginSignals: string[];
   trustpilotRating: number | null;
   trustpilotReviewCount: number | null;
+  trustpilotReviews: string[];
   manipulationTactics: string[];
   reviewPlatforms: string[];
 

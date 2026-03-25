@@ -21,6 +21,9 @@ export async function POST(req: NextRequest) {
     if (!valid) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
+    if (user.isBanned) {
+      return NextResponse.json({ error: "This account has been suspended. Please contact support." }, { status: 403 });
+    }
 
     const token = await createSession({ sub: user.id, email: user.email, name: user.name });
     const maxAge = SESSION_DAYS * 24 * 60 * 60;

@@ -291,7 +291,7 @@ function HealthBucket({
                   transition={{ delay: i * 0.035, duration: 0.2 }}
                   className="flex items-start gap-2 text-xs text-gray-400 leading-relaxed">
                   <Icon className="mt-0.5 h-3 w-3 shrink-0" style={{ color }} />
-                  <span>{SIGNAL_LABELS[s.name] ?? s.name}</span>
+                  <span>{s.detail || SIGNAL_LABELS[s.name] || s.name}</span>
                 </motion.li>
               ))}
             </ul>
@@ -523,30 +523,45 @@ export default function ReportPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={viewportOnce}
             transition={{ duration: 0.4 }}
-            className="mb-4 flex items-center justify-between rounded-2xl px-5 py-4"
+            className="mb-4 rounded-2xl overflow-hidden"
             style={{ background: "rgba(34,211,238,0.04)", border: "1px solid rgba(34,211,238,0.12)" }}>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-500 mb-2">Trustpilot</p>
-              <div className="flex items-center gap-2">
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map(s => (
-                    <Star key={s} className="h-4 w-4"
-                      style={{
-                        color: s <= Math.round(report.trustpilotRating!) ? "#22d3ee" : "rgba(255,255,255,0.1)",
-                        fill:  s <= Math.round(report.trustpilotRating!) ? "#22d3ee" : "transparent",
-                      }} />
-                  ))}
+            {/* Header row */}
+            <div className="flex items-center justify-between px-5 py-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-500 mb-2">Trustpilot</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <Star key={s} className="h-4 w-4"
+                        style={{
+                          color: s <= Math.round(report.trustpilotRating!) ? "#22d3ee" : "rgba(255,255,255,0.1)",
+                          fill:  s <= Math.round(report.trustpilotRating!) ? "#22d3ee" : "transparent",
+                        }} />
+                    ))}
+                  </div>
+                  <span className="text-sm font-bold text-cyan-400">{report.trustpilotRating.toFixed(1)}</span>
+                  <span className="text-xs text-gray-600">· {(report.trustpilotReviewCount ?? 0).toLocaleString()} reviews</span>
                 </div>
-                <span className="text-sm font-bold text-cyan-400">{report.trustpilotRating.toFixed(1)}</span>
-                <span className="text-xs text-gray-600">· {(report.trustpilotReviewCount ?? 0).toLocaleString()} reviews</span>
               </div>
+              <a
+                href={`https://www.trustpilot.com/review/${report.domain}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-400 transition-colors">
+                View all <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
-            <a
-              href={`https://www.trustpilot.com/review/${report.domain}`}
-              target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-400 transition-colors">
-              View <ExternalLink className="h-3 w-3" />
-            </a>
+            {/* Review snippets */}
+            {(report.trustpilotReviews ?? []).length > 0 && (
+              <div className="border-t px-5 pb-4 pt-3 space-y-2.5" style={{ borderColor: "rgba(34,211,238,0.1)" }}>
+                <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-2">What customers say</p>
+                {(report.trustpilotReviews ?? []).slice(0, 4).map((rev, i) => (
+                  <div key={i} className="flex gap-2">
+                    <span className="mt-0.5 text-cyan-600 shrink-0">›</span>
+                    <p className="text-xs text-gray-400 leading-relaxed">{rev}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -602,7 +617,7 @@ export default function ReportPage() {
                         {/* Prices */}
                         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
                           <div className="flex items-baseline gap-1">
-                            <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">Store</span>
+                            <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">This Store</span>
                             <span className="text-sm font-bold text-gray-100">{item.storePrice}</span>
                           </div>
                           <div className="flex items-baseline gap-1">
@@ -612,7 +627,13 @@ export default function ReportPage() {
                           {item.aliexpressPrice && (
                             <div className="flex items-baseline gap-1">
                               <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">AliExpress</span>
-                              <span className="text-sm font-semibold text-gray-400">{item.aliexpressPrice}</span>
+                              <span className="text-sm font-semibold text-gray-500">{item.aliexpressPrice}</span>
+                            </div>
+                          )}
+                          {item.temuPrice && (
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">Temu</span>
+                              <span className="text-sm font-semibold text-gray-500">{item.temuPrice}</span>
                             </div>
                           )}
                         </div>
@@ -643,6 +664,13 @@ export default function ReportPage() {
                             style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.14)", color: "#f87171" }}>
                             AliExpress <ExternalLink className="h-2.5 w-2.5" />
                           </a>
+                          {item.temuSearchUrl && (
+                            <a href={item.temuSearchUrl} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all hover:opacity-80 active:scale-95"
+                              style={{ background: "rgba(255,90,0,0.07)", border: "1px solid rgba(255,90,0,0.16)", color: "#fb923c" }}>
+                              Temu <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>

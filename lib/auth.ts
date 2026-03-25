@@ -22,6 +22,7 @@ export interface User {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   createdAt: string;
+  isBanned: boolean;
 }
 
 export interface SessionPayload {
@@ -32,10 +33,8 @@ export interface SessionPayload {
 
 // ── DB helpers ─────────────────────────────────────────────────────────────────
 
-export async function findUser(email: string): Promise<User | null> {
-  const rows = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
-  const r = rows[0];
-  if (!r) return null;
+import type { UserRow } from "./schema";
+function rowToUser(r: UserRow): User {
   return {
     id: r.id, email: r.email, name: r.name, passwordHash: r.passwordHash,
     plan: r.plan, checksRemaining: r.checksRemaining,
@@ -43,21 +42,18 @@ export async function findUser(email: string): Promise<User | null> {
     stripeCustomerId: r.stripeCustomerId ?? null,
     stripeSubscriptionId: r.stripeSubscriptionId ?? null,
     createdAt: r.createdAt,
+    isBanned: r.isBanned ?? false,
   };
+}
+
+export async function findUser(email: string): Promise<User | null> {
+  const rows = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+  return rows[0] ? rowToUser(rows[0]) : null;
 }
 
 export async function findUserById(id: string): Promise<User | null> {
   const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id, email: r.email, name: r.name, passwordHash: r.passwordHash,
-    plan: r.plan, checksRemaining: r.checksRemaining,
-    billingPeriodEnd: r.billingPeriodEnd ?? null,
-    stripeCustomerId: r.stripeCustomerId ?? null,
-    stripeSubscriptionId: r.stripeSubscriptionId ?? null,
-    createdAt: r.createdAt,
-  };
+  return rows[0] ? rowToUser(rows[0]) : null;
 }
 
 export async function createUser(email: string, name: string, passwordHash: string): Promise<User> {
@@ -83,6 +79,7 @@ export async function updateUser(id: string, data: Partial<{
   billingPeriodEnd: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  isBanned: boolean;
 }>): Promise<void> {
   await db.update(users).set(data).where(eq(users.id, id));
 }
