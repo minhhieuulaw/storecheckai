@@ -560,6 +560,26 @@ export default function ReportPage() {
                     <p className="text-xs text-gray-400 leading-relaxed">{rev}</p>
                   </div>
                 ))}
+                {/* AI verdict on reviews */}
+                {(() => {
+                  const r = report.trustpilotRating!;
+                  const verdict =
+                    r >= 4.2
+                      ? { icon: "✅", color: "#4ade80", bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.18)",
+                          text: `Customers are largely satisfied — a ${r.toFixed(1)}/5 rating suggests this store delivers on its promises. Generally safe to purchase.` }
+                      : r >= 3.0
+                      ? { icon: "⚠️", color: "#fbbf24", bg: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.18)",
+                          text: `Mixed feedback — a ${r.toFixed(1)}/5 rating means experiences vary. Read recent reviews carefully before ordering and consider using a protected payment method.` }
+                      : { icon: "🚫", color: "#f87171", bg: "rgba(239,68,68,0.07)", border: "rgba(239,68,68,0.18)",
+                          text: `Mostly negative reviews — a ${r.toFixed(1)}/5 rating is a red flag. Customers report serious issues. We recommend avoiding this store or buying with caution.` };
+                  return (
+                    <div className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 mt-1"
+                      style={{ background: verdict.bg, border: `1px solid ${verdict.border}` }}>
+                      <span className="text-sm shrink-0 mt-px">{verdict.icon}</span>
+                      <p className="text-xs leading-relaxed" style={{ color: verdict.color }}>{verdict.text}</p>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </motion.div>
