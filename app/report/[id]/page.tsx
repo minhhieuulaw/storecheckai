@@ -539,10 +539,12 @@ export default function ReportPage() {
                   <div className="pb-0.5">
                     <div className="flex gap-0.5 mb-1">
                       {[1, 2, 3, 4, 5].map(s => {
-                        const filled = s <= Math.round(report.trustpilotRating!);
+                        const r = report.trustpilotRating!;
+                        const starColor = r >= 4 ? "#00b67a" : r >= 3 ? "#fbbf24" : r >= 2 ? "#f97316" : "#ef4444";
+                        const filled = s <= Math.round(r);
                         return (
                           <Star key={s} className="h-3.5 w-3.5"
-                            style={{ color: filled ? "#00b67a" : "rgba(255,255,255,0.12)", fill: filled ? "#00b67a" : "transparent" }} />
+                            style={{ color: filled ? starColor : "rgba(255,255,255,0.12)", fill: filled ? starColor : "transparent" }} />
                         );
                       })}
                     </div>
