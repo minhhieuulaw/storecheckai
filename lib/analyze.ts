@@ -179,7 +179,7 @@ export async function analyzeProductPrices(products: ScrapedProduct[]): Promise<
   if (eligible.length === 0) return [];
 
   const results = await Promise.allSettled(
-    eligible.map(async (product): Promise<PriceAnalysis> => {
+    eligible.map(async (product): Promise<PriceAnalysis | null> => {
       const priceLabel = product.priceUsd != null
         ? `$${product.priceUsd} USD (converted from ${product.price})`
         : product.price!;
@@ -202,6 +202,7 @@ Identify the product from the image and return a price assessment for a US shopp
 
 Return ONLY this JSON (no markdown):
 {
+  "isPhysicalProduct": true,
   "identifiedAs": "specific product type you see in the image",
   "amazonPrice": "typical retail price range on Amazon USA, e.g. $20-35, or null if unknown",
   "aliexpressPrice": "typical wholesale/dropship price on AliExpress, e.g. $4-8, or null if unknown",
@@ -210,6 +211,8 @@ Return ONLY this JSON (no markdown):
   "priceVerdict": "cheap" | "fair" | "overpriced" | "marked_up",
   "explanation": "one direct sentence comparing the store price to Amazon retail (primary) and AliExpress/Temu wholesale (reference)"
 }
+
+IMPORTANT: Set "isPhysicalProduct" to false if this is clearly a shipping upgrade, expedited delivery, priority processing, protection plan, warranty, insurance, gift wrap, or any non-purchasable service — not a physical product.
 
 Verdict rules:
 - "cheap"     = store price is below typical Amazon retail (genuinely good deal)
@@ -220,11 +223,12 @@ Verdict rules:
             },
           ],
         }],
-        max_tokens: 250,
+        max_tokens: 280,
         response_format: { type: "json_object" },
       });
 
       const raw = JSON.parse(response.choices[0]?.message?.content || "{}") as {
+        isPhysicalProduct?: boolean;
         identifiedAs?: string;
         amazonPrice?: string | null;
         aliexpressPrice?: string | null;
@@ -233,6 +237,9 @@ Verdict rules:
         priceVerdict?: string;
         explanation?: string;
       };
+
+      // Skip shipping upsells / service items identified by GPT
+      if (raw.isPhysicalProduct === false) return null;
 
       const validVerdicts: PriceAnalysis["priceVerdict"][] = ["fair", "cheap", "overpriced", "marked_up"];
       const verdict = validVerdicts.includes(raw.priceVerdict as PriceAnalysis["priceVerdict"])
@@ -262,6 +269,7 @@ Verdict rules:
   );
 
   return results
-    .filter((r): r is PromiseFulfilledResult<PriceAnalysis> => r.status === "fulfilled")
-    .map(r => r.value);
+    .filter((r): r is PromiseFulfilledResult<PriceAnalysis | null> => r.status === "fulfilled")
+    .map(r => r.value)
+    .filter((v): v is PriceAnalysis => v !== null);
 }

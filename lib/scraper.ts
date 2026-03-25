@@ -512,8 +512,19 @@ async function getDomainAge(domain: string): Promise<{ ageDays: number | null; c
 interface ShopifyProductJson {
   title: string;
   handle: string;
+  product_type?: string;
   variants: Array<{ price: string }>;
   images: Array<{ src: string }>;
+}
+
+// Keywords that indicate a non-physical / service item (shipping upsells, warranties, etc.)
+const NON_PRODUCT_RE =
+  /\b(shipping|expedited|priority\s+processing|priority\s+mail|protection\s+plan|warranty|insurance|gift\s+(card|wrap|certificate)|donation|tip|handling\s+fee|rush\s+order|express\s+delivery|delivery\s+upgrade|upsell|add-?on|fragile|route\s+protection)\b/i;
+
+function isNonPhysicalProduct(title: string, productType?: string): boolean {
+  if (NON_PRODUCT_RE.test(title)) return true;
+  if (productType && /^(shipping|service|upsell|insurance)/i.test(productType)) return true;
+  return false;
 }
 
 /** Detect the store's display currency from raw HTML */
@@ -573,18 +584,22 @@ function toUsd(num: number, currency: string): number | null {
 
 async function fetchShopifyProducts(baseUrl: string, currency: string): Promise<ScrapedProduct[]> {
   try {
-    const res = await fetch(`${baseUrl}/products.json?limit=6`, {
+    // Fetch extra products so we still have 4-6 after filtering out non-physical items
+    const res = await fetch(`${baseUrl}/products.json?limit=12`, {
       headers: US_HEADERS,
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return [];
     const data = await res.json() as { products: ShopifyProductJson[] };
-    return (data.products ?? []).slice(0, 6).flatMap(p => {
+    const physical: ScrapedProduct[] = [];
+    for (const p of data.products ?? []) {
+      if (physical.length >= 6) break;
+      if (!p.title || isNonPhysicalProduct(p.title, p.product_type)) continue;
       const rawPrice = p.variants?.[0]?.price;
-      if (!p.title || !rawPrice) return [];
+      if (!rawPrice) continue;
       const num = parseFloat(rawPrice);
-      if (isNaN(num)) return [];
-      return [{
+      if (isNaN(num)) continue;
+      physical.push({
         name: p.title,
         price: formatPrice(num, currency),
         priceNumeric: num,
@@ -592,8 +607,9 @@ async function fetchShopifyProducts(baseUrl: string, currency: string): Promise<
         image: p.images?.[0]?.src ?? null,
         url: `${baseUrl}/products/${p.handle}`,
         currency,
-      }];
-    });
+      });
+    }
+    return physical;
   } catch {
     return [];
   }
