@@ -109,7 +109,7 @@ const en: Translations = {
       forgotPassword: "Forgot password?",
     },
     register: {
-      subtitle: "Create your free account", nameLabel: "Full name", emailLabel: "Email",
+      subtitle: "Create your account", nameLabel: "Full name", emailLabel: "Email",
       passwordLabel: "Password", submit: "Create account", submitting: "Creating account…",
       hasAccount: "Already have an account?", signIn: "Sign in",
     },
@@ -140,7 +140,7 @@ const en: Translations = {
     badge: "AI Pre-Purchase Safety Check", title: "Is it safe to buy", titleAccent: "from this store?",
     subtitle: "Paste any product or store link. Get an AI safety report in 30 seconds — trust score, review analysis, return risk, and a clear verdict.",
     cta: "Analyze this store", placeholder: "https://store.com/product/...",
-    trustNote: "Sign up free · 1 check included · Results in <30s", worksWithLabel: "Works with",
+    trustNote: "1 check included · Results in <30s", worksWithLabel: "Works with",
   },
   howItWorks: {
     badge: "How it works", heading: "Three steps.", headingAccent: "Under 30 seconds.",
@@ -195,7 +195,7 @@ const en: Translations = {
     ],
   },
   modal: {
-    heading: "Create your account", subheading: "1 free check included · No credit card required",
+    heading: "Create your account", subheading: "No credit card required",
     successTitle: "Account created!", successSub: "Signing you in…",
   },
   analyzing: {
@@ -241,7 +241,7 @@ const fr: Translations = {
       forgotPassword: "Mot de passe oublié ?",
     },
     register: {
-      subtitle: "Créez votre compte gratuit", nameLabel: "Nom complet", emailLabel: "Adresse e-mail",
+      subtitle: "Créez votre compte", nameLabel: "Nom complet", emailLabel: "Adresse e-mail",
       passwordLabel: "Mot de passe", submit: "Créer un compte", submitting: "Création du compte…",
       hasAccount: "Vous avez déjà un compte ?", signIn: "Se connecter",
     },
@@ -272,7 +272,7 @@ const fr: Translations = {
     badge: "Vérification d'achat avant commande par IA", title: "Ce site est-il", titleAccent: "fiable pour acheter ?",
     subtitle: "Collez n'importe quel lien de boutique ou de produit. Obtenez un rapport de sécurité IA en 30 secondes — score de confiance, analyse des avis, risque de retour et verdict clair.",
     cta: "Analyser cette boutique", placeholder: "https://boutique.com/produit/...",
-    trustNote: "Inscription gratuite · 1 vérification incluse · Résultats en moins de 30 s", worksWithLabel: "Fonctionne avec",
+    trustNote: "1 vérification incluse · Résultats en moins de 30 s", worksWithLabel: "Fonctionne avec",
   },
   howItWorks: {
     badge: "Comment ça marche", heading: "Trois étapes.", headingAccent: "En moins de 30 secondes.",
@@ -327,7 +327,7 @@ const fr: Translations = {
     ],
   },
   modal: {
-    heading: "Créez votre compte", subheading: "1 vérification gratuite incluse · Aucune carte de crédit requise",
+    heading: "Créez votre compte", subheading: "Aucune carte de crédit requise",
     successTitle: "Compte créé !", successSub: "Connexion en cours…",
   },
   analyzing: {
@@ -373,7 +373,7 @@ const de: Translations = {
       forgotPassword: "Passwort vergessen?",
     },
     register: {
-      subtitle: "Erstellen Sie Ihr kostenloses Konto", nameLabel: "Vollständiger Name", emailLabel: "E-Mail-Adresse",
+      subtitle: "Erstellen Sie Ihr Konto", nameLabel: "Vollständiger Name", emailLabel: "E-Mail-Adresse",
       passwordLabel: "Passwort", submit: "Konto erstellen", submitting: "Konto wird erstellt…",
       hasAccount: "Haben Sie bereits ein Konto?", signIn: "Anmelden",
     },
@@ -404,7 +404,7 @@ const de: Translations = {
     badge: "KI-Sicherheitscheck vor dem Kauf", title: "Ist es sicher,", titleAccent: "in diesem Shop zu kaufen?",
     subtitle: "Fügen Sie einen Shop- oder Produktlink ein. Erhalten Sie in 30 Sekunden einen KI-Sicherheitsbericht — Vertrauensscore, Rezensionsanalyse, Rückgaberisiko und ein klares Urteil.",
     cta: "Diesen Shop analysieren", placeholder: "https://shop.com/produkt/...",
-    trustNote: "Kostenlose Registrierung · 1 Check inklusive · Ergebnisse in <30s", worksWithLabel: "Funktioniert mit",
+    trustNote: "1 Check inklusive · Ergebnisse in <30s", worksWithLabel: "Funktioniert mit",
   },
   howItWorks: {
     badge: "So funktioniert es", heading: "Drei Schritte.", headingAccent: "In unter 30 Sekunden.",
@@ -459,7 +459,7 @@ const de: Translations = {
     ],
   },
   modal: {
-    heading: "Konto erstellen", subheading: "1 kostenloser Check inklusive · Keine Kreditkarte erforderlich",
+    heading: "Konto erstellen", subheading: "Keine Kreditkarte erforderlich",
     successTitle: "Konto erstellt!", successSub: "Anmeldung läuft…",
   },
   analyzing: {
@@ -505,7 +505,7 @@ const es: Translations = {
       forgotPassword: "¿Olvidaste tu contraseña?",
     },
     register: {
-      subtitle: "Crea tu cuenta gratuita", nameLabel: "Nombre completo", emailLabel: "Correo electrónico",
+      subtitle: "Crea tu cuenta", nameLabel: "Nombre completo", emailLabel: "Correo electrónico",
       passwordLabel: "Contraseña", submit: "Crear cuenta", submitting: "Creando cuenta…",
       hasAccount: "¿Ya tienes una cuenta?", signIn: "Iniciar sesión",
     },
@@ -536,7 +536,7 @@ const es: Translations = {
     badge: "Verificación de seguridad antes de comprar con IA", title: "¿Es seguro comprar", titleAccent: "en esta tienda?",
     subtitle: "Pega cualquier enlace de tienda o producto. Obtén un informe de seguridad IA en 30 segundos — puntuación de confianza, análisis de reseñas, riesgo de devolución y un veredicto claro.",
     cta: "Analizar esta tienda", placeholder: "https://tienda.com/producto/...",
-    trustNote: "Registro gratuito · 1 verificación incluida · Resultados en <30s", worksWithLabel: "Compatible con",
+    trustNote: "1 verificación incluida · Resultados en <30s", worksWithLabel: "Compatible con",
   },
   howItWorks: {
     badge: "Cómo funciona", heading: "Tres pasos.", headingAccent: "En menos de 30 segundos.",
@@ -591,7 +591,7 @@ const es: Translations = {
     ],
   },
   modal: {
-    heading: "Crea tu cuenta", subheading: "1 verificación gratuita incluida · No se requiere tarjeta de crédito",
+    heading: "Crea tu cuenta", subheading: "No se requiere tarjeta de crédito",
     successTitle: "¡Cuenta creada!", successSub: "Iniciando sesión…",
   },
   analyzing: {
@@ -637,7 +637,7 @@ const pt: Translations = {
       forgotPassword: "Esqueceu a senha?",
     },
     register: {
-      subtitle: "Crie sua conta gratuita", nameLabel: "Nome completo", emailLabel: "E-mail",
+      subtitle: "Crie sua conta", nameLabel: "Nome completo", emailLabel: "E-mail",
       passwordLabel: "Senha", submit: "Criar conta", submitting: "Criando conta…",
       hasAccount: "Já tem uma conta?", signIn: "Entrar",
     },
@@ -668,7 +668,7 @@ const pt: Translations = {
     badge: "Verificação de segurança pré-compra com IA", title: "Esta loja é", titleAccent: "segura para comprar?",
     subtitle: "Cole qualquer link de loja ou produto. Receba um relatório de segurança IA em 30 segundos — pontuação de confiança, análise de avaliações, risco de devolução e um veredicto claro.",
     cta: "Analisar esta loja", placeholder: "https://loja.com/produto/...",
-    trustNote: "Cadastro gratuito · 1 verificação incluída · Resultados em <30s", worksWithLabel: "Funciona com",
+    trustNote: "1 verificação incluída · Resultados em <30s", worksWithLabel: "Funciona com",
   },
   howItWorks: {
     badge: "Como funciona", heading: "Três etapas.", headingAccent: "Em menos de 30 segundos.",
@@ -723,7 +723,7 @@ const pt: Translations = {
     ],
   },
   modal: {
-    heading: "Crie sua conta", subheading: "1 verificação gratuita incluída · Sem necessidade de cartão de crédito",
+    heading: "Crie sua conta", subheading: "Sem necessidade de cartão de crédito",
     successTitle: "Conta criada!", successSub: "Fazendo login…",
   },
   analyzing: {
@@ -769,7 +769,7 @@ const it: Translations = {
       forgotPassword: "Password dimenticata?",
     },
     register: {
-      subtitle: "Crea il tuo account gratuito", nameLabel: "Nome completo", emailLabel: "Indirizzo e-mail",
+      subtitle: "Crea il tuo account", nameLabel: "Nome completo", emailLabel: "Indirizzo e-mail",
       passwordLabel: "Password", submit: "Crea account", submitting: "Creazione account…",
       hasAccount: "Hai già un account?", signIn: "Accedi",
     },
@@ -800,7 +800,7 @@ const it: Translations = {
     badge: "Controllo di sicurezza pre-acquisto con IA", title: "Questo negozio è", titleAccent: "sicuro per acquistare?",
     subtitle: "Incolla qualsiasi link di negozio o prodotto. Ricevi un report di sicurezza IA in 30 secondi — punteggio di fiducia, analisi delle recensioni, rischio di reso e un verdetto chiaro.",
     cta: "Analizza questo negozio", placeholder: "https://negozio.com/prodotto/...",
-    trustNote: "Iscrizione gratuita · 1 verifica inclusa · Risultati in <30s", worksWithLabel: "Compatibile con",
+    trustNote: "1 verifica inclusa · Risultati in <30s", worksWithLabel: "Compatibile con",
   },
   howItWorks: {
     badge: "Come funziona", heading: "Tre passaggi.", headingAccent: "In meno di 30 secondi.",
@@ -855,7 +855,7 @@ const it: Translations = {
     ],
   },
   modal: {
-    heading: "Crea il tuo account", subheading: "1 verifica gratuita inclusa · Nessuna carta di credito richiesta",
+    heading: "Crea il tuo account", subheading: "Nessuna carta di credito richiesta",
     successTitle: "Account creato!", successSub: "Accesso in corso…",
   },
   analyzing: {

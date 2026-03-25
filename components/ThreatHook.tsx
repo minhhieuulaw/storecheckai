@@ -131,10 +131,10 @@ export function ThreatHook() {
             </p>
           </div>
 
-          <a href="#analyze"
+          <a href="/register"
             className="relative shrink-0 rounded-2xl px-6 py-3 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
             style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 24px rgba(99,102,241,0.3)" }}>
-            Check a store now — it&apos;s free
+            Check a store now
           </a>
         </motion.div>
       </div>

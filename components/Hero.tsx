@@ -165,7 +165,7 @@ export function Hero() {
         {[
           { value: "50K+", label: "Stores analyzed" },
           { value: "30s", label: "Avg report time" },
-          { value: "1", label: "Free check" },
+          { value: "20+", label: "Signals checked" },
         ].map((s) => (
           <div key={s.label}>
             <div className="text-2xl font-bold bg-clip-text text-transparent"
