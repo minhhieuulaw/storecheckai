@@ -7,6 +7,13 @@ RUN npm ci --omit=dev
 # ── Stage 2: builder ──────────────────────────────────────────────
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Declare build-time env vars so they are inlined into the Next.js bundle
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .

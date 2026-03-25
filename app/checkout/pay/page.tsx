@@ -7,7 +7,14 @@ import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe
 import { Shield, ArrowLeft, Zap, CheckCircle2, Lock } from "lucide-react";
 import Link from "next/link";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// Lazy-init: avoid calling loadStripe at module level during build (env var undefined in Docker)
+let _stripePromise: ReturnType<typeof loadStripe> | null = null;
+function getStripePromise() {
+  if (!_stripePromise) {
+    _stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "");
+  }
+  return _stripePromise;
+}
 
 const PLAN_INFO: Record<string, {
   name: string; price: string; billing: string;
@@ -172,7 +179,7 @@ function CheckoutForm({ plan }: { plan: string }) {
               </div>
             ) : (
               <EmbeddedCheckoutProvider
-                stripe={stripePromise}
+                stripe={getStripePromise()}
                 options={{ clientSecret }}>
                 <EmbeddedCheckout />
               </EmbeddedCheckoutProvider>
