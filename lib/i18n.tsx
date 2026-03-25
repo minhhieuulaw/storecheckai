@@ -140,7 +140,7 @@ const en: Translations = {
     badge: "AI Pre-Purchase Safety Check", title: "Is it safe to buy", titleAccent: "from this store?",
     subtitle: "Paste any product or store link. Get an AI safety report in 30 seconds — trust score, review analysis, return risk, and a clear verdict.",
     cta: "Analyze this store", placeholder: "https://store.com/product/...",
-    trustNote: "1 check included · Results in <30s", worksWithLabel: "Works with",
+    trustNote: "Results in <30s", worksWithLabel: "Works with",
   },
   howItWorks: {
     badge: "How it works", heading: "Three steps.", headingAccent: "Under 30 seconds.",
@@ -272,7 +272,7 @@ const fr: Translations = {
     badge: "Vérification d'achat avant commande par IA", title: "Ce site est-il", titleAccent: "fiable pour acheter ?",
     subtitle: "Collez n'importe quel lien de boutique ou de produit. Obtenez un rapport de sécurité IA en 30 secondes — score de confiance, analyse des avis, risque de retour et verdict clair.",
     cta: "Analyser cette boutique", placeholder: "https://boutique.com/produit/...",
-    trustNote: "1 vérification incluse · Résultats en moins de 30 s", worksWithLabel: "Fonctionne avec",
+    trustNote: "Résultats en moins de 30 s", worksWithLabel: "Fonctionne avec",
   },
   howItWorks: {
     badge: "Comment ça marche", heading: "Trois étapes.", headingAccent: "En moins de 30 secondes.",
@@ -404,7 +404,7 @@ const de: Translations = {
     badge: "KI-Sicherheitscheck vor dem Kauf", title: "Ist es sicher,", titleAccent: "in diesem Shop zu kaufen?",
     subtitle: "Fügen Sie einen Shop- oder Produktlink ein. Erhalten Sie in 30 Sekunden einen KI-Sicherheitsbericht — Vertrauensscore, Rezensionsanalyse, Rückgaberisiko und ein klares Urteil.",
     cta: "Diesen Shop analysieren", placeholder: "https://shop.com/produkt/...",
-    trustNote: "1 Check inklusive · Ergebnisse in <30s", worksWithLabel: "Funktioniert mit",
+    trustNote: "Ergebnisse in <30s", worksWithLabel: "Funktioniert mit",
   },
   howItWorks: {
     badge: "So funktioniert es", heading: "Drei Schritte.", headingAccent: "In unter 30 Sekunden.",
@@ -536,7 +536,7 @@ const es: Translations = {
     badge: "Verificación de seguridad antes de comprar con IA", title: "¿Es seguro comprar", titleAccent: "en esta tienda?",
     subtitle: "Pega cualquier enlace de tienda o producto. Obtén un informe de seguridad IA en 30 segundos — puntuación de confianza, análisis de reseñas, riesgo de devolución y un veredicto claro.",
     cta: "Analizar esta tienda", placeholder: "https://tienda.com/producto/...",
-    trustNote: "1 verificación incluida · Resultados en <30s", worksWithLabel: "Compatible con",
+    trustNote: "Resultados en <30s", worksWithLabel: "Compatible con",
   },
   howItWorks: {
     badge: "Cómo funciona", heading: "Tres pasos.", headingAccent: "En menos de 30 segundos.",
@@ -668,7 +668,7 @@ const pt: Translations = {
     badge: "Verificação de segurança pré-compra com IA", title: "Esta loja é", titleAccent: "segura para comprar?",
     subtitle: "Cole qualquer link de loja ou produto. Receba um relatório de segurança IA em 30 segundos — pontuação de confiança, análise de avaliações, risco de devolução e um veredicto claro.",
     cta: "Analisar esta loja", placeholder: "https://loja.com/produto/...",
-    trustNote: "1 verificação incluída · Resultados em <30s", worksWithLabel: "Funciona com",
+    trustNote: "Resultados em <30s", worksWithLabel: "Funciona com",
   },
   howItWorks: {
     badge: "Como funciona", heading: "Três etapas.", headingAccent: "Em menos de 30 segundos.",
@@ -800,7 +800,7 @@ const it: Translations = {
     badge: "Controllo di sicurezza pre-acquisto con IA", title: "Questo negozio è", titleAccent: "sicuro per acquistare?",
     subtitle: "Incolla qualsiasi link di negozio o prodotto. Ricevi un report di sicurezza IA in 30 secondi — punteggio di fiducia, analisi delle recensioni, rischio di reso e un verdetto chiaro.",
     cta: "Analizza questo negozio", placeholder: "https://negozio.com/prodotto/...",
-    trustNote: "1 verifica inclusa · Risultati in <30s", worksWithLabel: "Compatibile con",
+    trustNote: "Risultati in <30s", worksWithLabel: "Compatibile con",
   },
   howItWorks: {
     badge: "Come funziona", heading: "Tre passaggi.", headingAccent: "In meno di 30 secondi.",
