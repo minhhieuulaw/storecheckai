@@ -1,6 +1,11 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY ?? "");
+// Lazy-init: avoid module-level instantiation that throws when RESEND_API_KEY is missing at build time
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "StorecheckAI <onboarding@resend.dev>";
 const APP_URL    = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
@@ -131,7 +136,7 @@ export async function sendPasswordResetEmail(
 </body>
 </html>`;
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    FROM_EMAIL,
     to:      toEmail,
     subject,
