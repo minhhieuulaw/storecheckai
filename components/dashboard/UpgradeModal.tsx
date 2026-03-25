@@ -119,22 +119,43 @@ export function UpgradeModal({ open, onClose, reason = "upgrade" }: Props) {
 
               {/* Header */}
               <div className="mb-6 text-center">
-                <div className="inline-flex items-center justify-center h-11 w-11 rounded-2xl mb-3"
-                  style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 24px rgba(99,102,241,0.3)" }}>
-                  {reason === "quota"
-                    ? <Zap className="h-5 w-5 text-white" />
-                    : <Crown className="h-5 w-5 text-white" />}
-                </div>
                 {reason === "quota" ? (
-                  <>
-                    <h2 className="text-xl font-bold text-white">You&apos;ve run out of checks</h2>
-                    <p className="text-sm text-gray-500 mt-1">Choose a plan to continue analyzing stores.</p>
-                  </>
+                  /* ── Emotional out-of-checks header ── */
+                  <div>
+                    <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl mb-4"
+                      style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)", boxShadow: "0 0 28px rgba(239,68,68,0.35)" }}>
+                      <Zap className="h-6 w-6 text-white" />
+                    </div>
+
+                    <h2 className="text-xl font-bold text-white mb-2">
+                      You&apos;re out of checks — don&apos;t shop blind
+                    </h2>
+
+                    {/* Emotional hook strip */}
+                    <div className="mx-auto max-w-sm rounded-2xl px-4 py-3 mb-3"
+                      style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                      <p className="text-sm text-red-300 leading-relaxed">
+                        Every year, Americans lose{" "}
+                        <span className="font-bold text-red-200">$8 billion</span>{" "}
+                        to fake and low-quality products. Without a check, your next order could be next.
+                      </p>
+                    </div>
+
+                    <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
+                      Don&apos;t let your family get burned by another sketchy store.
+                      One check is all it takes to shop with confidence.
+                    </p>
+                  </div>
                 ) : (
-                  <>
+                  /* ── Standard upgrade header ── */
+                  <div>
+                    <div className="inline-flex items-center justify-center h-11 w-11 rounded-2xl mb-3"
+                      style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 24px rgba(99,102,241,0.3)" }}>
+                      <Crown className="h-5 w-5 text-white" />
+                    </div>
                     <h2 className="text-xl font-bold text-white">Upgrade your plan</h2>
                     <p className="text-sm text-gray-500 mt-1">Get more checks and unlock advanced features.</p>
-                  </>
+                  </div>
                 )}
               </div>
 
