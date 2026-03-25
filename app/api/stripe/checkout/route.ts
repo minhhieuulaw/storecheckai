@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
     const user = await findUserById(session.sub);
     if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
-    const { plan } = await req.json() as { plan?: StripePlanKey };
+    const body = await req.json() as { plan?: StripePlanKey; embedded?: boolean };
+    const { plan, embedded } = body;
     if (!plan || !STRIPE_PLANS[plan]) {
       return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
     }
@@ -47,31 +48,49 @@ export async function POST(req: NextRequest) {
       await updateUser(user.id, { stripeCustomerId: customerId });
     }
 
+    const lineItem = cfg.mode === "subscription"
+      ? {
+          price_data: {
+            currency:     "usd",
+            product_data: { name: cfg.name, description: cfg.description },
+            unit_amount:  cfg.price,
+            recurring:    { interval: cfg.billing! },
+          },
+          quantity: 1,
+        }
+      : {
+          price_data: {
+            currency:     "usd",
+            product_data: { name: cfg.name, description: cfg.description },
+            unit_amount:  cfg.price,
+          },
+          quantity: 1,
+        };
+
+    if (embedded) {
+      // Embedded checkout — returns clientSecret for custom page
+      const checkoutSession = await stripe.checkout.sessions.create({
+        customer:   customerId,
+        mode:       cfg.mode,
+        line_items: [lineItem],
+        ui_mode:    "embedded",
+        return_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        metadata:   { userId: user.id, plan },
+        subscription_data: cfg.mode === "subscription"
+          ? { metadata: { userId: user.id, plan } }
+          : undefined,
+        allow_promotion_codes: true,
+      });
+      return NextResponse.json({ clientSecret: checkoutSession.client_secret });
+    }
+
+    // Standard hosted checkout (fallback)
     const checkoutSession = await stripe.checkout.sessions.create({
       customer:   customerId,
       mode:       cfg.mode,
-      line_items: [
-        cfg.mode === "subscription"
-          ? {
-              price_data: {
-                currency:     "usd",
-                product_data: { name: cfg.name, description: cfg.description },
-                unit_amount:  cfg.price,
-                recurring:    { interval: cfg.billing! },
-              },
-              quantity: 1,
-            }
-          : {
-              price_data: {
-                currency:     "usd",
-                product_data: { name: cfg.name, description: cfg.description },
-                unit_amount:  cfg.price,
-              },
-              quantity: 1,
-            },
-      ],
+      line_items: [lineItem],
       success_url:       `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:        `${appUrl}/#pricing`,
+      cancel_url:        `${appUrl}/dashboard/billing`,
       metadata:          { userId: user.id, plan },
       subscription_data: cfg.mode === "subscription"
         ? { metadata: { userId: user.id, plan } }

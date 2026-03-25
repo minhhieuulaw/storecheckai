@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, CheckCircle2, MinusCircle, Loader2, Crown, Sparkles } from "lucide-react";
 
@@ -69,21 +70,13 @@ interface Props {
 }
 
 export function UpgradeModal({ open, onClose, reason = "upgrade" }: Props) {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
 
-  async function handleCheckout(plan: string) {
+  function handleCheckout(plan: string) {
     setLoading(plan);
-    try {
-      const res  = await fetch("/api/stripe/checkout", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ plan }),
-      });
-      const data = await res.json() as { url?: string; error?: string };
-      if (data.url) window.location.href = data.url;
-    } finally {
-      setLoading(null);
-    }
+    onClose();
+    router.push(`/checkout/pay?plan=${plan}`);
   }
 
   return (

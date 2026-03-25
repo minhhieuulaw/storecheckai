@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Zap, CheckCircle2, MinusCircle, Loader2, Crown, Sparkles,
@@ -80,6 +81,7 @@ interface Props {
 }
 
 export function BillingDashboard({ plan, checksRemaining, billingPeriodEnd, hasStripeSubscription }: Props) {
+  const router = useRouter();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading,   setPortalLoading]   = useState(false);
 
@@ -89,19 +91,9 @@ export function BillingDashboard({ plan, checksRemaining, billingPeriodEnd, hasS
   const usedChecks  = Math.max(0, totalChecks - checksRemaining);
   const pct         = totalChecks > 0 ? Math.round((usedChecks / totalChecks) * 100) : 0;
 
-  async function handleCheckout(planKey: string) {
+  function handleCheckout(planKey: string) {
     setCheckoutLoading(planKey);
-    try {
-      const res  = await fetch("/api/stripe/checkout", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ plan: planKey }),
-      });
-      const data = await res.json() as { url?: string };
-      if (data.url) window.location.href = data.url;
-    } finally {
-      setCheckoutLoading(null);
-    }
+    router.push(`/checkout/pay?plan=${planKey}`);
   }
 
   async function handlePortal() {
