@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 function LoginForm() {
   const router = useRouter();
@@ -53,11 +52,6 @@ function LoginForm() {
       transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
       className="w-full max-w-md">
 
-      {/* Language switcher */}
-      <div className="flex justify-end mb-4">
-        <LanguageSwitcher />
-      </div>
-
       {/* Logo */}
       <div className="flex flex-col items-center mb-8">
         <div
@@ -100,12 +94,7 @@ function LoginForm() {
 
           {/* Password */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">{t.auth.login.passwordLabel}</label>
-              <a href="/forgot-password" className="text-xs text-violet-500 hover:text-violet-400 transition-colors">
-                {t.auth.login.forgotPassword}
-              </a>
-            </div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">{t.auth.login.passwordLabel}</label>
             <div className="relative">
               <input
                 type={showPw ? "text" : "password"}
@@ -155,6 +144,10 @@ function LoginForm() {
             style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" />{t.auth.login.submitting}</> : t.auth.login.submit}
           </motion.button>
+
+          <a href="/forgot-password" className="block text-center text-xs text-gray-500 hover:text-violet-400 transition-colors mt-1">
+            {t.auth.login.forgotPassword}
+          </a>
 
         </form>
       </div>
