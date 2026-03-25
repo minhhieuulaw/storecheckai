@@ -359,10 +359,11 @@ function ErrorState({ message }: { message: string }) {
 export default function ReportPage() {
   const params  = useParams();
   const id      = params?.id as string;
-  const [report,   setReport]   = useState<Report | null>(null);
-  const [error,    setError]    = useState<string | null>(null);
-  const [copied,   setCopied]   = useState(false);
-  const [showTech, setShowTech] = useState(false);
+  const [report,    setReport]    = useState<Report | null>(null);
+  const [error,     setError]     = useState<string | null>(null);
+  const [copied,    setCopied]    = useState(false);
+  const [showTech,  setShowTech]  = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -370,6 +371,10 @@ export default function ReportPage() {
       .then(r => r.json())
       .then(data => { if (data.error) setError(data.error); else setReport(data as Report); })
       .catch(() => setError("Failed to load report."));
+    // Check login status silently
+    fetch("/api/user/settings")
+      .then(r => setIsLoggedIn(r.ok))
+      .catch(() => setIsLoggedIn(false));
   }, [id]);
 
   function handleShare() {
@@ -1081,6 +1086,43 @@ export default function ReportPage() {
           <SectionHeader label="Facebook Ad Check" />
           <FBAdChecker />
         </motion.div>
+
+        {/* ── GROWTH CTA — shown only to non-logged-in visitors ──────────── */}
+        {isLoggedIn === false && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportOnce}
+            transition={{ duration: 0.45 }}
+            className="mb-8 rounded-2xl overflow-hidden"
+            style={{ border: "1px solid rgba(99,102,241,0.25)", background: "rgba(99,102,241,0.06)" }}>
+            {/* Top accent line */}
+            <div className="h-0.5 w-full" style={{ background: "linear-gradient(90deg,#6366f1,#8b5cf6,#6366f1)" }} />
+            <div className="px-6 py-7 flex flex-col sm:flex-row items-center gap-5">
+              <div className="flex-1 min-w-0 text-center sm:text-left">
+                <p className="text-base font-bold text-white mb-1">
+                  Want to check stores before you buy?
+                </p>
+                <p className="text-sm text-gray-400">
+                  Join thousands of shoppers who use StorecheckAI to avoid scams and bad stores.
+                  AI analysis in under 30 seconds.
+                </p>
+              </div>
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <motion.a
+                  href="/register"
+                  whileHover={{ scale: 1.03, boxShadow: "0 0 24px rgba(99,102,241,0.4)" }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all"
+                  style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
+                  <Shield className="h-4 w-4" />
+                  Create free account
+                </motion.a>
+                <p className="text-[11px] text-gray-600">No credit card required</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── CTA / FOOTER ────────────────────────────────────────────────── */}
         <motion.div
