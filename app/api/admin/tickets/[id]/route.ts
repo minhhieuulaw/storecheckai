@@ -9,11 +9,12 @@ import { eq } from "drizzle-orm";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdminSession();
 
+    const { id } = await params;
     const body = await req.json().catch(() => null);
     const action     = body?.action as string | undefined; // "reply" | "close" | "reopen"
     const adminReply = (body?.reply ?? "").trim().slice(0, 5000);
@@ -27,17 +28,17 @@ export async function PATCH(
         adminRepliedAt: now,
         status:         "replied",
         updatedAt:      now,
-      }).where(eq(tickets.id, params.id));
+      }).where(eq(tickets.id, id));
     } else if (action === "close") {
       await db.update(tickets).set({
         status:    "closed",
         updatedAt: now,
-      }).where(eq(tickets.id, params.id));
+      }).where(eq(tickets.id, id));
     } else if (action === "reopen") {
       await db.update(tickets).set({
         status:    "open",
         updatedAt: now,
-      }).where(eq(tickets.id, params.id));
+      }).where(eq(tickets.id, id));
     } else {
       return NextResponse.json({ error: "Invalid action." }, { status: 400 });
     }
