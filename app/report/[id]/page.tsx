@@ -524,110 +524,122 @@ export default function ReportPage() {
             viewport={viewportOnce}
             transition={{ duration: 0.4 }}
             className="mb-4 rounded-2xl overflow-hidden"
-            style={{ background: "rgba(34,211,238,0.04)", border: "1px solid rgba(34,211,238,0.12)" }}>
-            {/* Header row */}
-            <div className="flex items-center justify-between px-5 py-4">
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+
+            {/* ── Header ── */}
+            <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-500 mb-2">Trustpilot</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <Star key={s} className="h-4 w-4"
-                        style={{
-                          color: s <= Math.round(report.trustpilotRating!) ? "#22d3ee" : "rgba(255,255,255,0.1)",
-                          fill:  s <= Math.round(report.trustpilotRating!) ? "#22d3ee" : "transparent",
-                        }} />
-                    ))}
+                {/* Trustpilot badge */}
+                <div className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 mb-3"
+                  style={{ background: "rgba(0,182,122,0.12)", border: "1px solid rgba(0,182,122,0.2)" }}>
+                  <Star className="h-3 w-3" style={{ color: "#00b67a", fill: "#00b67a" }} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#00b67a" }}>Trustpilot</span>
+                </div>
+                {/* Big rating */}
+                <div className="flex items-end gap-3">
+                  <span className="text-4xl font-black text-white leading-none">{report.trustpilotRating.toFixed(1)}</span>
+                  <div className="pb-0.5">
+                    <div className="flex gap-0.5 mb-1">
+                      {[1, 2, 3, 4, 5].map(s => {
+                        const filled = s <= Math.round(report.trustpilotRating!);
+                        return (
+                          <Star key={s} className="h-3.5 w-3.5"
+                            style={{ color: filled ? "#00b67a" : "rgba(255,255,255,0.12)", fill: filled ? "#00b67a" : "transparent" }} />
+                        );
+                      })}
+                    </div>
+                    <span className="text-[11px] text-gray-500">{(report.trustpilotReviewCount ?? 0).toLocaleString()} reviews</span>
                   </div>
-                  <span className="text-sm font-bold text-cyan-400">{report.trustpilotRating.toFixed(1)}</span>
-                  <span className="text-xs text-gray-600">· {(report.trustpilotReviewCount ?? 0).toLocaleString()} reviews</span>
                 </div>
               </div>
-              <a
-                href={`https://www.trustpilot.com/review/${report.domain}`}
+              <a href={`https://www.trustpilot.com/review/${report.domain}`}
                 target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-400 transition-colors">
+                className="shrink-0 flex items-center gap-1 text-xs text-gray-600 hover:text-gray-400 transition-colors mt-1">
                 View all <ExternalLink className="h-3 w-3" />
               </a>
             </div>
-            {/* Review snippets */}
-            {(report.trustpilotReviews ?? []).length > 0 && (
-              <div className="border-t px-5 pb-4 pt-3 space-y-2.5" style={{ borderColor: "rgba(34,211,238,0.1)" }}>
-                <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-2">What customers say</p>
-                {(report.trustpilotReviews ?? []).slice(0, 4).map((rev, i) => (
-                  <div key={i} className="flex gap-2">
-                    <span className="mt-0.5 text-cyan-600 shrink-0">›</span>
-                    <p className="text-xs text-gray-400 leading-relaxed">{rev}</p>
-                  </div>
-                ))}
-                {/* Review summary + advice */}
-                {(() => {
-                  const reviews = (report.trustpilotReviews ?? []);
-                  const r       = report.trustpilotRating!;
-                  const txt     = reviews.join(" ").toLowerCase();
 
-                  // Detect complaint themes from review text
-                  const themes: string[] = [];
-                  if (/not delivered|never arrived|still waiting|hasn't arrived|late deliver|slow ship|weeks to arrive|month.*wait/.test(txt))
-                    themes.push("slow or missing deliveries");
-                  if (/poor quality|bad quality|cheap|broke|defective|fake|not as described|wrong item|low quality|terrible product/.test(txt))
-                    themes.push("poor product quality");
-                  if (/hidden.*sub|subscription|charged.*again|bank.*charged|keeps.*charging|unauthorized|scam|fraud/.test(txt))
-                    themes.push("unexpected charges or hidden subscriptions");
-                  if (/no response|doesn.*reply|ignore|terrible support|bad.*service|worst.*service|no.*support|never.*contact/.test(txt))
-                    themes.push("unresponsive customer support");
-                  if (/won.*refund|refus.*refund|no refund|hard.*return|difficult.*return/.test(txt))
-                    themes.push("difficulty getting refunds");
+            {/* ── Reviews + Verdict ── */}
+            {(report.trustpilotReviews ?? []).length > 0 && (() => {
+              const reviews = report.trustpilotReviews ?? [];
+              const r       = report.trustpilotRating!;
+              const txt     = reviews.join(" ").toLowerCase();
 
-                  const posWords = (txt.match(/amazing|excellent|great|love|recommend|happy|satisfied|fast|quick|perfect|wonderful|helpful|best/g) ?? []).length;
-                  const negWords = (txt.match(/terrible|awful|worst|bad|scam|fraud|fake|broken|never|don.t recommend|waste|disapoint|useless/g) ?? []).length;
+              const themes: string[] = [];
+              if (/not delivered|never arrived|still waiting|hasn't arrived|late deliver|slow ship|weeks to arrive|month.*wait/.test(txt))
+                themes.push("slow or missing deliveries");
+              if (/poor quality|bad quality|cheap|broke|defective|fake|not as described|wrong item|low quality|terrible product/.test(txt))
+                themes.push("poor product quality");
+              if (/hidden.*sub|subscription|charged.*again|bank.*charged|keeps.*charging|unauthorized|scam|fraud/.test(txt))
+                themes.push("unexpected charges or hidden subscriptions");
+              if (/no response|doesn.*reply|ignore|terrible support|bad.*service|worst.*service|no.*support|never.*contact/.test(txt))
+                themes.push("unresponsive customer support");
+              if (/won.*refund|refus.*refund|no refund|hard.*return|difficult.*return/.test(txt))
+                themes.push("difficulty getting refunds");
 
-                  const isPositive = r >= 4.2 && posWords >= negWords && themes.length === 0;
-                  const isNegative = r < 3.0 || themes.length >= 2 || negWords > posWords;
+              const posWords = (txt.match(/amazing|excellent|great|love|recommend|happy|satisfied|fast|quick|perfect|wonderful|helpful|best/g) ?? []).length;
+              const negWords = (txt.match(/terrible|awful|worst|bad|scam|fraud|fake|broken|never|don.t recommend|waste|disapoint|useless/g) ?? []).length;
 
-                  let summary: string;
-                  let advice: string;
-                  let icon: string;
-                  let color: string;
-                  let bg: string;
-                  let border: string;
+              const isPositive = r >= 4.2 && posWords >= negWords && themes.length === 0;
+              const isNegative = r < 3.0 || themes.length >= 2 || negWords > posWords;
 
-                  if (isPositive) {
-                    summary = `Customers consistently report positive experiences — fast shipping, good product quality, and helpful support are frequently mentioned.`;
-                    advice  = `This store looks reliable. You can proceed with confidence, but always keep your order confirmation just in case.`;
-                    icon = "✅"; color = "#4ade80"; bg = "rgba(34,197,94,0.07)"; border = "rgba(34,197,94,0.18)";
-                  } else if (themes.length > 0) {
-                    summary = `Reviewers frequently complain about: ${themes.join(", ")}.`;
-                    if (isNegative) {
-                      advice = `We strongly recommend thinking twice before purchasing here. Consider checking alternative stores first, and if you do buy, use a payment method with buyer protection (e.g. PayPal or credit card) so you can dispute charges if needed.`;
-                      icon = "🚫"; color = "#f87171"; bg = "rgba(239,68,68,0.07)"; border = "rgba(239,68,68,0.18)";
-                    } else {
-                      advice = `Proceed with caution. Verify the return policy before ordering and use a payment method that allows disputes in case something goes wrong.`;
-                      icon = "⚠️"; color = "#fbbf24"; bg = "rgba(251,191,36,0.07)"; border = "rgba(251,191,36,0.18)";
-                    }
-                  } else if (isNegative) {
-                    summary = `The majority of reviews are negative, with customers reporting bad experiences overall.`;
-                    advice  = `We recommend avoiding this store or exploring alternatives before making a purchase.`;
-                    icon = "🚫"; color = "#f87171"; bg = "rgba(239,68,68,0.07)"; border = "rgba(239,68,68,0.18)";
-                  } else {
-                    summary = `Reviews are mixed — some customers are satisfied while others report issues.`;
-                    advice  = `Read the most recent reviews carefully before buying, and consider using a payment method with buyer protection.`;
-                    icon = "⚠️"; color = "#fbbf24"; bg = "rgba(251,191,36,0.07)"; border = "rgba(251,191,36,0.18)";
-                  }
+              let summary: string, advice: string, verdictLabel: string;
+              let vColor: string, vBg: string, vBorder: string;
 
-                  return (
-                    <div className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 mt-2"
-                      style={{ background: bg, border: `1px solid ${border}` }}>
-                      <span className="text-sm shrink-0 mt-0.5">{icon}</span>
-                      <div>
-                        <p className="text-xs leading-relaxed mb-1" style={{ color }}>{summary}</p>
-                        <p className="text-xs leading-relaxed text-gray-400">{advice}</p>
+              if (isPositive) {
+                summary      = "Customers consistently report positive experiences — fast shipping, good product quality, and helpful support are frequently mentioned.";
+                advice       = "This store looks reliable. You can proceed with confidence, but always keep your order confirmation just in case.";
+                verdictLabel = "Safe to buy";
+                vColor = "#4ade80"; vBg = "rgba(34,197,94,0.07)"; vBorder = "rgba(34,197,94,0.2)";
+              } else if (themes.length > 0 && isNegative) {
+                summary      = `Reviewers frequently complain about: ${themes.join(", ")}.`;
+                advice       = "Think twice before purchasing here — explore alternative stores first. If you proceed, use PayPal or a credit card so you can dispute charges if needed.";
+                verdictLabel = "High risk";
+                vColor = "#f87171"; vBg = "rgba(239,68,68,0.07)"; vBorder = "rgba(239,68,68,0.2)";
+              } else if (themes.length > 0) {
+                summary      = `Reviewers frequently complain about: ${themes.join(", ")}.`;
+                advice       = "Proceed with caution — check the return policy before ordering and use a payment method that allows disputes.";
+                verdictLabel = "Use caution";
+                vColor = "#fbbf24"; vBg = "rgba(251,191,36,0.07)"; vBorder = "rgba(251,191,36,0.2)";
+              } else if (isNegative) {
+                summary      = "The majority of reviews are negative, with customers reporting bad experiences overall.";
+                advice       = "We recommend avoiding this store or exploring alternatives before making a purchase.";
+                verdictLabel = "Not recommended";
+                vColor = "#f87171"; vBg = "rgba(239,68,68,0.07)"; vBorder = "rgba(239,68,68,0.2)";
+              } else {
+                summary      = "Reviews are mixed — some customers are satisfied while others report issues.";
+                advice       = "Read the most recent reviews carefully and use a payment method with buyer protection.";
+                verdictLabel = "Mixed reviews";
+                vColor = "#fbbf24"; vBg = "rgba(251,191,36,0.07)"; vBorder = "rgba(251,191,36,0.2)";
+              }
+
+              return (
+                <div className="border-t px-5 pb-5 pt-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                  <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-3">What customers say</p>
+
+                  {/* Review cards */}
+                  <div className="space-y-2 mb-4">
+                    {reviews.slice(0, 4).map((rev, i) => (
+                      <div key={i} className="rounded-xl px-3.5 py-2.5"
+                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev}&rdquo;</p>
                       </div>
+                    ))}
+                  </div>
+
+                  {/* Verdict card */}
+                  <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${vBorder}` }}>
+                    <div className="px-3.5 py-2 flex items-center gap-2" style={{ background: vBg }}>
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: vColor }}>{verdictLabel}</span>
                     </div>
-                  );
-                })()}
-              </div>
-            )}
+                    <div className="px-3.5 py-3" style={{ background: "rgba(255,255,255,0.015)" }}>
+                      <p className="text-xs font-medium leading-relaxed mb-1.5" style={{ color: vColor }}>{summary}</p>
+                      <p className="text-xs text-gray-500 leading-relaxed">{advice}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </motion.div>
         )}
 
