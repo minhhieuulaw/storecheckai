@@ -14,8 +14,10 @@ const PUBLIC_PREFIXES = [
   "/api/stripe",   // Stripe webhooks & checkout — MUST be public
   "/api/admin",    // Admin helpers — localhost only
   "/api/facebook-check",
+  "/api/report",   // public shareable report API
+  "/api/og",       // OG image generation — public
   "/checkout",     // success/cancel pages
-  "/report",       // shareable public reports
+  "/report",       // shareable public report pages
   "/_next",
   "/favicon.ico",
 ];
