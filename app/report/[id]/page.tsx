@@ -560,23 +560,69 @@ export default function ReportPage() {
                     <p className="text-xs text-gray-400 leading-relaxed">{rev}</p>
                   </div>
                 ))}
-                {/* AI verdict on reviews */}
+                {/* Review summary + advice */}
                 {(() => {
-                  const r = report.trustpilotRating!;
-                  const verdict =
-                    r >= 4.2
-                      ? { icon: "✅", color: "#4ade80", bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.18)",
-                          text: `Customers are largely satisfied — a ${r.toFixed(1)}/5 rating suggests this store delivers on its promises. Generally safe to purchase.` }
-                      : r >= 3.0
-                      ? { icon: "⚠️", color: "#fbbf24", bg: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.18)",
-                          text: `Mixed feedback — a ${r.toFixed(1)}/5 rating means experiences vary. Read recent reviews carefully before ordering and consider using a protected payment method.` }
-                      : { icon: "🚫", color: "#f87171", bg: "rgba(239,68,68,0.07)", border: "rgba(239,68,68,0.18)",
-                          text: `Mostly negative reviews — a ${r.toFixed(1)}/5 rating is a red flag. Customers report serious issues. We recommend avoiding this store or buying with caution.` };
+                  const reviews = (report.trustpilotReviews ?? []);
+                  const r       = report.trustpilotRating!;
+                  const txt     = reviews.join(" ").toLowerCase();
+
+                  // Detect complaint themes from review text
+                  const themes: string[] = [];
+                  if (/not delivered|never arrived|still waiting|hasn't arrived|late deliver|slow ship|weeks to arrive|month.*wait/.test(txt))
+                    themes.push("slow or missing deliveries");
+                  if (/poor quality|bad quality|cheap|broke|defective|fake|not as described|wrong item|low quality|terrible product/.test(txt))
+                    themes.push("poor product quality");
+                  if (/hidden.*sub|subscription|charged.*again|bank.*charged|keeps.*charging|unauthorized|scam|fraud/.test(txt))
+                    themes.push("unexpected charges or hidden subscriptions");
+                  if (/no response|doesn.*reply|ignore|terrible support|bad.*service|worst.*service|no.*support|never.*contact/.test(txt))
+                    themes.push("unresponsive customer support");
+                  if (/won.*refund|refus.*refund|no refund|hard.*return|difficult.*return/.test(txt))
+                    themes.push("difficulty getting refunds");
+
+                  const posWords = (txt.match(/amazing|excellent|great|love|recommend|happy|satisfied|fast|quick|perfect|wonderful|helpful|best/g) ?? []).length;
+                  const negWords = (txt.match(/terrible|awful|worst|bad|scam|fraud|fake|broken|never|don.t recommend|waste|disapoint|useless/g) ?? []).length;
+
+                  const isPositive = r >= 4.2 && posWords >= negWords && themes.length === 0;
+                  const isNegative = r < 3.0 || themes.length >= 2 || negWords > posWords;
+
+                  let summary: string;
+                  let advice: string;
+                  let icon: string;
+                  let color: string;
+                  let bg: string;
+                  let border: string;
+
+                  if (isPositive) {
+                    summary = `Customers consistently report positive experiences — fast shipping, good product quality, and helpful support are frequently mentioned.`;
+                    advice  = `This store looks reliable. You can proceed with confidence, but always keep your order confirmation just in case.`;
+                    icon = "✅"; color = "#4ade80"; bg = "rgba(34,197,94,0.07)"; border = "rgba(34,197,94,0.18)";
+                  } else if (themes.length > 0) {
+                    summary = `Reviewers frequently complain about: ${themes.join(", ")}.`;
+                    if (isNegative) {
+                      advice = `We strongly recommend thinking twice before purchasing here. Consider checking alternative stores first, and if you do buy, use a payment method with buyer protection (e.g. PayPal or credit card) so you can dispute charges if needed.`;
+                      icon = "🚫"; color = "#f87171"; bg = "rgba(239,68,68,0.07)"; border = "rgba(239,68,68,0.18)";
+                    } else {
+                      advice = `Proceed with caution. Verify the return policy before ordering and use a payment method that allows disputes in case something goes wrong.`;
+                      icon = "⚠️"; color = "#fbbf24"; bg = "rgba(251,191,36,0.07)"; border = "rgba(251,191,36,0.18)";
+                    }
+                  } else if (isNegative) {
+                    summary = `The majority of reviews are negative, with customers reporting bad experiences overall.`;
+                    advice  = `We recommend avoiding this store or exploring alternatives before making a purchase.`;
+                    icon = "🚫"; color = "#f87171"; bg = "rgba(239,68,68,0.07)"; border = "rgba(239,68,68,0.18)";
+                  } else {
+                    summary = `Reviews are mixed — some customers are satisfied while others report issues.`;
+                    advice  = `Read the most recent reviews carefully before buying, and consider using a payment method with buyer protection.`;
+                    icon = "⚠️"; color = "#fbbf24"; bg = "rgba(251,191,36,0.07)"; border = "rgba(251,191,36,0.18)";
+                  }
+
                   return (
-                    <div className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 mt-1"
-                      style={{ background: verdict.bg, border: `1px solid ${verdict.border}` }}>
-                      <span className="text-sm shrink-0 mt-px">{verdict.icon}</span>
-                      <p className="text-xs leading-relaxed" style={{ color: verdict.color }}>{verdict.text}</p>
+                    <div className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 mt-2"
+                      style={{ background: bg, border: `1px solid ${border}` }}>
+                      <span className="text-sm shrink-0 mt-0.5">{icon}</span>
+                      <div>
+                        <p className="text-xs leading-relaxed mb-1" style={{ color }}>{summary}</p>
+                        <p className="text-xs leading-relaxed text-gray-400">{advice}</p>
+                      </div>
                     </div>
                   );
                 })()}
