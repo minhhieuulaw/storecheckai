@@ -77,22 +77,9 @@ export default function OnboardingPage() {
     fetch("/api/user/settings").catch(() => {});
   }, []);
 
-  async function handleCheckout(planKey: string) {
+  function handleCheckout(planKey: string) {
     setLoading(planKey);
-    try {
-      const res  = await fetch("/api/stripe/checkout", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ plan: planKey }),
-      });
-      const data = await res.json() as { url?: string; error?: string };
-      if (data.url) window.location.href = data.url;
-      else router.push("/dashboard/billing");
-    } catch {
-      router.push("/dashboard/billing");
-    } finally {
-      setLoading(null);
-    }
+    router.push(`/checkout/pay?plan=${planKey}`);
   }
 
   return (

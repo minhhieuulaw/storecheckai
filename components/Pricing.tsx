@@ -77,14 +77,9 @@ function usePlanCheckout() {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
 
-  async function checkout(planKey: string) {
+  function checkout(planKey: string) {
     setLoading(planKey);
-    try {
-      const res  = await fetch("/api/stripe/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: planKey }) });
-      const data = await res.json() as { url?: string; redirect?: string; error?: string };
-      if (res.status === 401) { router.push("/login?from=/#pricing"); return; }
-      if (data.url) window.location.href = data.url;
-    } finally { setLoading(null); }
+    router.push(`/checkout/pay?plan=${planKey}`);
   }
 
   return { checkout, loading };

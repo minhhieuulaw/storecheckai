@@ -21,8 +21,12 @@ function SuccessContent() {
     const sessionId = params.get("session_id");
     if (!sessionId) { router.replace("/dashboard"); return; }
 
-    // Fetch session info to get the plan
-    fetch(`/api/stripe/checkout?session_id=${sessionId}`)
+    // Apply plan as fallback if webhook hasn't fired, and retrieve plan info
+    fetch("/api/stripe/sync-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    })
       .then(r => r.json())
       .then(d => { setPlan(d.plan ?? "personal"); setLoading(false); })
       .catch(() => { setPlan("personal"); setLoading(false); });
