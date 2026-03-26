@@ -86,11 +86,13 @@ export function BillingDashboard({ plan, checksRemaining, billingPeriodEnd, hasS
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading,   setPortalLoading]   = useState(false);
 
-  const info       = PLAN_INFO[plan as keyof typeof PLAN_INFO] ?? PLAN_INFO.free;
-  const isPaid     = plan !== "free";
+  const info        = PLAN_INFO[plan as keyof typeof PLAN_INFO] ?? PLAN_INFO.free;
+  const isPaid      = plan !== "free";
   const totalChecks = info.checks;
-  const usedChecks  = Math.max(0, totalChecks - checksRemaining);
-  const pct         = totalChecks > 0 ? Math.round((usedChecks / totalChecks) * 100) : 0;
+  // Cap display remaining to totalChecks so bar stays within 0–total range
+  const barRemaining = Math.min(checksRemaining, totalChecks);
+  const usedChecks   = totalChecks > 0 ? totalChecks - barRemaining : 0;
+  const pct          = totalChecks > 0 ? Math.min(100, Math.round((usedChecks / totalChecks) * 100)) : 0;
 
   function handleCheckout(planKey: string) {
     setCheckoutLoading(planKey);
@@ -126,7 +128,11 @@ export function BillingDashboard({ plan, checksRemaining, billingPeriodEnd, hasS
                 )}
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
-                {isPaid ? `${checksRemaining} of ${totalChecks} checks remaining this period` : "No active plan — upgrade to get started"}
+                {isPaid
+                  ? totalChecks > 0 && checksRemaining <= totalChecks
+                    ? `${checksRemaining} of ${totalChecks} checks remaining this period`
+                    : `${checksRemaining} check${checksRemaining !== 1 ? "s" : ""} remaining`
+                  : "No active plan — upgrade to get started"}
               </p>
             </div>
           </div>
@@ -149,7 +155,7 @@ export function BillingDashboard({ plan, checksRemaining, billingPeriodEnd, hasS
           <div className="mt-5">
             <div className="flex justify-between text-xs text-gray-600 mb-1.5">
               <span>{usedChecks} used</span>
-              <span>{checksRemaining} left</span>
+              <span>{barRemaining} left</span>
             </div>
             <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
               <motion.div
