@@ -359,17 +359,29 @@ function ErrorState({ message }: { message: string }) {
 export default function ReportPage() {
   const params  = useParams();
   const id      = params?.id as string;
-  const [report,    setReport]    = useState<Report | null>(null);
-  const [error,     setError]     = useState<string | null>(null);
-  const [copied,    setCopied]    = useState(false);
-  const [showTech,  setShowTech]  = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [report,      setReport]      = useState<Report | null>(null);
+  const [error,       setError]       = useState<string | null>(null);
+  const [copied,      setCopied]      = useState(false);
+  const [showTech,    setShowTech]    = useState(false);
+  const [isLoggedIn,  setIsLoggedIn]  = useState<boolean | null>(null);
+  const [scamWarnings, setScamWarnings] = useState<{ id: string; content: string; createdAt: string }[]>([]);
 
   useEffect(() => {
     if (!id) return;
     fetch(`/api/report/${id}`)
       .then(r => r.json())
-      .then(data => { if (data.error) setError(data.error); else setReport(data as Report); })
+      .then(data => {
+        if (data.error) { setError(data.error); return; }
+        setReport(data as Report);
+        // Check blacklist for this domain
+        const domain = (data as Report).domain;
+        if (domain) {
+          fetch(`/api/scam-reports/domain?d=${encodeURIComponent(domain)}`)
+            .then(r => r.json())
+            .then(d => setScamWarnings(d.reports ?? []))
+            .catch(() => {});
+        }
+      })
       .catch(() => setError("Failed to load report."));
     // Check login status silently
     fetch("/api/user/settings")
@@ -452,6 +464,30 @@ export default function ReportPage() {
       </motion.nav>
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+
+        {/* ── BLACKLIST WARNING ───────────────────────────────────────────── */}
+        {scamWarnings.length > 0 && (
+          <motion.div {...fadeUp} className="mb-5 rounded-2xl px-5 py-4"
+            style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.3)" }}>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-red-300 mb-1">
+                  ⚠️ This store has been reported as a scam by {scamWarnings.length} user{scamWarnings.length > 1 ? "s" : ""}
+                </p>
+                <ul className="space-y-1.5 mt-2">
+                  {scamWarnings.map(w => (
+                    <li key={w.id} className="text-xs text-gray-400 leading-relaxed border-l-2 pl-3"
+                      style={{ borderColor: "rgba(239,68,68,0.4)" }}>
+                      &ldquo;{w.content.slice(0, 120)}{w.content.length > 120 ? "…" : ""}&rdquo;
+                      <span className="ml-2 text-gray-600">{new Date(w.createdAt).toLocaleDateString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── STORE HERO ──────────────────────────────────────────────────── */}
         <motion.div {...fadeUp} className="mb-4 rounded-2xl overflow-hidden"

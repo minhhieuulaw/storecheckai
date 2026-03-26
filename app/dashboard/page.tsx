@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getServerSession, getServerUser } from "@/lib/server-auth";
 import { getUserReports } from "@/lib/store";
 import { QuickAnalyze } from "@/components/dashboard/QuickAnalyze";
-import { BarChart3, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Clock, Zap } from "lucide-react";
+import { BarChart3, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Clock, Zap, ShieldAlert } from "lucide-react";
 import type { Verdict } from "@/lib/types";
 
 function verdictIcon(v: Verdict) {
@@ -39,9 +39,12 @@ export default async function DashboardPage() {
   const reports = await getUserReports(user.id);
   const recent  = reports.slice(0, 5);
 
-  const buyCount    = reports.filter(r => r.verdict === "BUY").length;
+  const buyCount     = reports.filter(r => r.verdict === "BUY").length;
   const cautionCount = reports.filter(r => r.verdict === "CAUTION").length;
-  const skipCount   = reports.filter(r => r.verdict === "SKIP").length;
+  const skipCount    = reports.filter(r => r.verdict === "SKIP").length;
+  const flagged      = reports.filter(r => r.verdict === "SKIP" || (r.verdict === "CAUTION" && r.trustScore < 40))
+                               .sort((a, b) => a.trustScore - b.trustScore)
+                               .slice(0, 5);
 
   const stats = [
     { label: "Total Checks",  value: reports.length, icon: BarChart3,     color: "#818cf8" },
@@ -156,6 +159,50 @@ export default async function DashboardPage() {
       <div className="mb-8">
         <QuickAnalyze checksRemaining={user.checksRemaining} />
       </div>
+
+      {/* Flagged / Alarming stores */}
+      {flagged.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-red-400" />
+              <h2 className="text-sm font-semibold text-white">Stores to Avoid</h2>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                style={{ background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
+                {flagged.length}
+              </span>
+            </div>
+            <Link href="/dashboard/report-scam"
+              className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1">
+              Report a scam <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {flagged.map(r => (
+              <Link key={r.id} href={`/report/${r.id}`}>
+                <div className="flex items-center gap-4 rounded-xl px-4 py-3 transition-colors hover:bg-red-500/[0.04] cursor-pointer"
+                  style={{ border: "1px solid rgba(239,68,68,0.14)", background: "rgba(239,68,68,0.03)" }}>
+                  <div className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold"
+                    style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
+                    {r.domain.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{r.storeName}</p>
+                    <p className="text-xs text-gray-600 truncate">{r.domain}</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-sm font-bold text-red-400">{r.trustScore}</span>
+                    <div className="flex items-center gap-1 text-xs font-medium text-red-400">
+                      <XCircle className="h-3.5 w-3.5" />
+                      {r.verdict}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent reports */}
       <div>

@@ -60,8 +60,23 @@ export const tickets = pgTable("tickets", {
   updatedAt:      text("updated_at").notNull(),
 });
 
+// ── Scam Reports ────────────────────────────────────────────────────────────────
+export const scamReports = pgTable("scam_reports", {
+  id:          text("id").primaryKey(),
+  userId:      text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shopUrl:     text("shop_url").notNull(),
+  domain:      text("domain").notNull(),
+  content:     text("content").notNull(),
+  images:      json("images").notNull().$type<string[]>(),  // base64 data URLs (max 3)
+  status:      text("status").default("pending").notNull(), // pending | approved | rejected
+  adminNote:   text("admin_note"),
+  createdAt:   text("created_at").notNull(),
+  reviewedAt:  text("reviewed_at"),
+});
+
 export type UserRow               = typeof users.$inferSelect;
 export type ReportRow             = typeof reports.$inferSelect;
 export type SettingRow            = typeof settings.$inferSelect;
 export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
 export type TicketRow             = typeof tickets.$inferSelect;
+export type ScamReportRow         = typeof scamReports.$inferSelect;

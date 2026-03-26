@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, FileText, Settings, LogOut, Shield, CreditCard, MessageCircle } from "lucide-react";
+import { LayoutDashboard, FileText, Settings, LogOut, Shield, CreditCard, MessageCircle, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 const nav = [
-  { href: "/dashboard",          label: "Overview",   icon: LayoutDashboard },
-  { href: "/dashboard/reports",  label: "My Reports", icon: FileText },
-  { href: "/dashboard/billing",  label: "Billing",    icon: CreditCard },
-  { href: "/dashboard/settings", label: "Settings",   icon: Settings },
-  { href: "/dashboard/support",  label: "Support",    icon: MessageCircle },
+  { href: "/dashboard",               label: "Overview",      icon: LayoutDashboard },
+  { href: "/dashboard/reports",       label: "My Reports",    icon: FileText },
+  { href: "/dashboard/billing",       label: "Billing",       icon: CreditCard },
+  { href: "/dashboard/settings",      label: "Settings",      icon: Settings },
+  { href: "/dashboard/support",       label: "Support",       icon: MessageCircle },
+  { href: "/dashboard/report-scam",   label: "Report a Scam", icon: AlertTriangle },
 ];
 
 export function Sidebar() {

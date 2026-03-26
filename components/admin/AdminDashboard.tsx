@@ -137,6 +137,12 @@ export function AdminDashboard({ stats, maintenance }: {
             <MessageCircle className="h-4 w-4" />
             Tickets
           </a>
+          <a href="/admin/scam-reports"
+            className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-gray-400 transition-all hover:text-white"
+            style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            Scam Reports
+          </a>
           <a href="/"
             className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-gray-400 transition-all hover:text-white"
             style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
