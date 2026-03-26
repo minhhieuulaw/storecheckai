@@ -79,34 +79,37 @@ export default async function DashboardPage(
           <h1 className="text-2xl font-bold text-white">Welcome back, {firstName} 👋</h1>
           <p className="text-sm text-gray-500 mt-1">Here&apos;s an overview of your store checks.</p>
         </div>
-        {/* Plan + quota badge */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2 rounded-xl px-3 py-2"
-            style={{ background: planInfo.bg, border: `1px solid ${planInfo.color}30` }}>
-            <Zap className="h-3.5 w-3.5" style={{ color: planInfo.color }} />
-            <span className="text-xs font-semibold" style={{ color: planInfo.color }}>{planInfo.label}</span>
+        {/* Plan + quota — unified card */}
+        <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5 shrink-0"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+
+          {/* Plan pill */}
+          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1"
+            style={{ background: planInfo.bg }}>
+            <Zap className="h-3 w-3" style={{ color: planInfo.color }} />
+            <span className="text-xs font-bold" style={{ color: planInfo.color }}>{planInfo.label}</span>
           </div>
 
-          {/* Checks remaining — prominent card */}
-          <div className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5"
-            style={{ background: checksBg, border: `1px solid ${checksBorder}` }}>
-            {isOut ? (
-              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: checksColor }} />
-            ) : (
-              <Zap className="h-4 w-4 shrink-0" style={{ color: checksColor }} />
-            )}
-            <div className="flex flex-col leading-none">
-              <span className="text-xl font-extrabold" style={{ color: checksColor }}>{checks}</span>
-              <span className="text-[10px] text-gray-500 mt-0.5">checks left</span>
-            </div>
-            {(isOut || isLow) && (
-              <Link href="/dashboard/billing"
-                className="ml-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white transition-all hover:opacity-90 shrink-0"
-                style={{ background: isOut ? "linear-gradient(135deg,#ef4444,#dc2626)" : "linear-gradient(135deg,#f97316,#ea580c)" }}>
-                {isOut ? "Upgrade now" : "Top up"}
-              </Link>
-            )}
+          {/* Divider */}
+          <div className="w-px h-4 mx-1" style={{ background: "rgba(255,255,255,0.1)" }} />
+
+          {/* Checks count */}
+          <div className="flex items-center gap-1.5">
+            {isOut
+              ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: checksColor }} />
+              : <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: checksColor }} />}
+            <span className="text-sm font-bold" style={{ color: checksColor }}>{checks}</span>
+            <span className="text-xs text-gray-500">checks left</span>
           </div>
+
+          {/* Upgrade CTA */}
+          {(isOut || isLow) && (
+            <Link href="/dashboard/billing"
+              className="ml-2 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white transition-all hover:opacity-90 shrink-0"
+              style={{ background: isOut ? "linear-gradient(135deg,#ef4444,#dc2626)" : "linear-gradient(135deg,#f97316,#ea580c)" }}>
+              {isOut ? "Upgrade" : "Top up"}
+            </Link>
+          )}
         </div>
       </div>
 
