@@ -28,10 +28,10 @@ export function Navbar() {
   const { t } = useTranslation();
 
   const NAV_LINKS = [
-    { label: t.nav.howItWorks,    anchor: "how-it-works"   },
-    { label: t.nav.sampleReport,  anchor: "sample-report"  },
-    { label: t.nav.pricing,       anchor: "pricing"        },
-    { label: t.nav.faq,           anchor: "faq"            },
+    { label: t.nav.howItWorks,    href: "/#how-it-works"   },
+    { label: t.nav.sampleReport,  href: "/#sample-report"  },
+    { label: t.nav.pricing,       href: "/pricing"         },
+    { label: t.nav.faq,           href: "/#faq"            },
   ];
 
   useEffect(() => {
@@ -76,10 +76,10 @@ export function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex flex-1 justify-center items-center gap-4 text-sm text-gray-500">
-            {NAV_LINKS.map(({ label, anchor }) => (
+            {NAV_LINKS.map(({ label, href }) => (
               <a
-                key={anchor}
-                href={`#${anchor}`}
+                key={href}
+                href={href}
                 className="relative py-1 hover:text-white transition-colors duration-200 group whitespace-nowrap">
                 {label}
                 <span
@@ -167,10 +167,10 @@ export function Navbar() {
               className="md:hidden overflow-hidden border-t"
               style={{ borderColor: "rgba(255,255,255,0.06)" }}>
               <div className="px-5 py-4 flex flex-col gap-1">
-                {NAV_LINKS.map(({ label, anchor }, i) => (
+                {NAV_LINKS.map(({ label, href }, i) => (
                   <motion.a
-                    key={anchor}
-                    href={`#${anchor}`}
+                    key={href}
+                    href={href}
                     onClick={() => setOpen(false)}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
