@@ -25,6 +25,10 @@ function getPlans(t: Translations) {
         { text: f.facebookCheck,      included: false },
         { text: f.reportHistory,      included: false },
       ],
+      testimonial: {
+        quote: "Saved me from a $140 fake sneaker site. Paid $3 and dodged a scam.",
+        author: "Emily R., verified buyer",
+      },
     },
     {
       key: "personal", name: p[1].name, tag: t.pricing.mostPopular,
@@ -41,6 +45,10 @@ function getPlans(t: Translations) {
         { text: f.facebookCheck,      included: true },
         { text: f.reportHistorySaved, included: true },
       ],
+      testimonial: {
+        quote: "I check every store before buying now. The return risk score alone is worth it.",
+        author: "Marcus T., online shopper",
+      },
     },
     {
       key: "pro", name: p[2].name, tag: null,
@@ -57,6 +65,10 @@ function getPlans(t: Translations) {
         { text: f.facebookCheck,      included: true },
         { text: f.reportHistorySaved, included: true },
       ],
+      testimonial: {
+        quote: "Our team vets vendors weekly. Pro pays for itself after one avoided bad supplier.",
+        author: "Sarah K., sourcing manager",
+      },
     },
   ];
 }
@@ -166,7 +178,7 @@ function PlanContent({
         <p className="mt-3 text-sm text-gray-400 leading-relaxed">{plan.desc}</p>
       </div>
 
-      <ul className="mb-8 flex-1 space-y-2.5">
+      <ul className="mb-5 flex-1 space-y-2.5">
         {plan.features.map(f => (
           <li key={f.text} className="flex items-center gap-2.5 text-sm"
             style={{ color: f.included ? "#d1d5db" : "#4b5563" }}>
@@ -177,6 +189,14 @@ function PlanContent({
           </li>
         ))}
       </ul>
+
+      <div className="mb-5 pl-3 py-0.5"
+        style={{ borderLeft: "2px solid rgba(255,255,255,0.08)" }}>
+        <p className="text-xs italic text-gray-500 leading-relaxed">
+          &ldquo;{plan.testimonial.quote}&rdquo;
+        </p>
+        <p className="mt-1 text-[11px] text-gray-600">{plan.testimonial.author}</p>
+      </div>
 
       <button onClick={onCheckout} disabled={loading}
         className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"

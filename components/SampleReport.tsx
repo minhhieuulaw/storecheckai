@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CheckCircle2, XCircle, AlertTriangle, AlertCircle,
   RotateCcw, CreditCard, Truck, ShieldCheck,
@@ -168,6 +168,10 @@ export function SampleReport() {
   const { t } = useTranslation();
   const sr = t.sampleReport;
   const [showTech, setShowTech] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  useEffect(() => {
+    fetch("/api/auth/me").then(r => { if (r.ok) setIsLoggedIn(true); }).catch(() => {});
+  }, []);
 
   const trustColor  = scoreColor(SAMPLE.trustScore);
   const verdictColor = "#fbbf24";
@@ -491,6 +495,35 @@ export function SampleReport() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* ── CTA Block ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
+              className="rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+              style={{
+                background: "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.06) 100%)",
+                border: "1px solid rgba(99,102,241,0.22)",
+              }}
+            >
+              <div className="text-center sm:text-left">
+                <p className="font-semibold text-white text-sm leading-snug">
+                  Want a report like this for any store you&apos;re about to buy from?
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Takes under 30 seconds. No credit card required to start.
+                </p>
+              </div>
+              <a
+                href={isLoggedIn ? "/dashboard" : "/register"}
+                className="shrink-0 rounded-2xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
+                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 20px rgba(99,102,241,0.3)" }}
+              >
+                {isLoggedIn ? "Check a store now" : "Start for free"}
+              </a>
+            </motion.div>
 
           </div>
         </motion.div>

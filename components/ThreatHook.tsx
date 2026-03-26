@@ -1,7 +1,26 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, DollarSign, ShoppingBag, Users } from "lucide-react";
+
+const VARIANTS = [
+  {
+    headline: "Check before you checkout — protect your family's money.",
+    sub: "One quick scan tells you everything shady stores don't want you to know.",
+    cta: "Check a store now",
+  },
+  {
+    headline: "You're 3 clicks away from knowing if this store will scam you.",
+    sub: "Paste the URL, get a full trust report in 30 seconds. Free to start.",
+    cta: "Try it free",
+  },
+  {
+    headline: "That store you're about to buy from? We'll tell you if it's safe.",
+    sub: "AI-powered safety checks for any e-commerce store — verdict in under 30s.",
+    cta: "Check it now — free",
+  },
+] as const;
 
 const stats = [
   {
@@ -39,6 +58,17 @@ const stats = [
 ];
 
 export function ThreatHook() {
+  const [variant, setVariant] = useState<(typeof VARIANTS)[number]>(VARIANTS[0]);
+  useEffect(() => {
+    const stored = localStorage.getItem("th_variant");
+    const parsed = stored !== null ? parseInt(stored, 10) : NaN;
+    const idx = !isNaN(parsed) && parsed >= 0 && parsed < VARIANTS.length
+      ? parsed
+      : Math.floor(Math.random() * VARIANTS.length);
+    if (isNaN(parsed) || stored === null) localStorage.setItem("th_variant", String(idx));
+    setVariant(VARIANTS[idx]);
+  }, []);
+
   return (
     <section className="relative px-4 py-20 sm:px-6 overflow-hidden">
       {/* Background glow */}
@@ -124,17 +154,17 @@ export function ThreatHook() {
 
           <div className="relative text-center sm:text-left">
             <p className="font-bold text-white text-lg leading-snug">
-              Check before you checkout — protect your family&apos;s money.
+              {variant.headline}
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              One quick scan tells you everything shady stores don&apos;t want you to know.
+              {variant.sub}
             </p>
           </div>
 
           <a href="/register"
             className="relative shrink-0 rounded-2xl px-6 py-3 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
             style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 24px rgba(99,102,241,0.3)" }}>
-            Check a store now
+            {variant.cta}
           </a>
         </motion.div>
       </div>
