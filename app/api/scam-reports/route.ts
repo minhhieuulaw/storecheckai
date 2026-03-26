@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth";
 import { createScamReport, getUserScamReports } from "@/lib/scam-reports";
+import { uploadImages } from "@/lib/storage";
 
 function extractDomain(url: string): string {
   try {
@@ -46,12 +47,14 @@ export async function POST(req: NextRequest) {
     }
 
     const domain = extractDomain(body.shopUrl.trim());
+    // Upload images to object storage; falls back to base64 if unconfigured
+    const imageUrls = await uploadImages(body.images);
     const report = await createScamReport({
       userId:  session.sub,
       shopUrl: body.shopUrl.trim(),
       domain,
       content: body.content.trim(),
-      images:  body.images,
+      images:  imageUrls,
     });
 
     return NextResponse.json({ success: true, report });

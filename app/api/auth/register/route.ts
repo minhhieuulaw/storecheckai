@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { findUser, createUser, hashPassword, createSession, COOKIE_NAME, DISPLAY_COOKIE, SESSION_DAYS } from "@/lib/auth";
+import { sendWelcomeEmail } from "@/lib/email";
 
 // ── Rate limiter: 10 registrations / hour per IP ──────────────────────────────
 const registerRl = new Map<string, { count: number; resetAt: number }>();
@@ -52,6 +53,9 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(password);
     const user = await createUser(emailTrimmed, nameTrimmed, passwordHash);
+
+    // Fire-and-forget — don't block response on email delivery
+    sendWelcomeEmail(user.email, user.name).catch(() => {});
 
     const token = await createSession({ sub: user.id, email: user.email, name: user.name });
     const maxAge = SESSION_DAYS * 24 * 60 * 60;

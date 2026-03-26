@@ -1,4 +1,4 @@
-import { pgTable, text, integer, json, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, json, boolean, index } from "drizzle-orm/pg-core";
 
 // ── Users ──────────────────────────────────────────────────────────────────────
 export const users = pgTable("users", {
@@ -72,7 +72,7 @@ export const scamReports = pgTable("scam_reports", {
   adminNote:   text("admin_note"),
   createdAt:   text("created_at").notNull(),
   reviewedAt:  text("reviewed_at"),
-});
+}, (t) => [index("scam_reports_domain_idx").on(t.domain)]);
 
 export type UserRow               = typeof users.$inferSelect;
 export type ReportRow             = typeof reports.$inferSelect;

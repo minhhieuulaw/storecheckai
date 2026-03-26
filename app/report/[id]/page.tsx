@@ -368,12 +368,13 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/report/${id}`)
-      .then(r => r.json())
-      .then(data => {
+    const reportP = fetch(`/api/report/${id}`).then(r => r.json());
+    const loginP  = fetch("/api/auth/me", { credentials: "include" }).then(r => r.ok).catch(() => false);
+    Promise.all([reportP, loginP])
+      .then(([data, loggedIn]) => {
+        setIsLoggedIn(loggedIn as boolean);
         if (data.error) { setError(data.error); return; }
         setReport(data as Report);
-        // Check blacklist for this domain
         const domain = (data as Report).domain;
         if (domain) {
           fetch(`/api/scam-reports/domain?d=${encodeURIComponent(domain)}`)
@@ -383,10 +384,6 @@ export default function ReportPage() {
         }
       })
       .catch(() => setError("Failed to load report."));
-    // Check login status silently
-    fetch("/api/user/settings")
-      .then(r => setIsLoggedIn(r.ok))
-      .catch(() => setIsLoggedIn(false));
   }, [id]);
 
   function handleShare() {

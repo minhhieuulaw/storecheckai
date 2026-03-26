@@ -8,10 +8,23 @@ import { calculateTrustScore, calculateReturnRisk } from "@/lib/scoring";
 import { analyzeWithAI, analyzeProductPrices } from "@/lib/analyze";
 import { saveReport } from "@/lib/store";
 import { verifySession, findUserById } from "@/lib/auth";
-import { useCheck, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
+import { useCheck, addChecks, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
+import { sendCheckCompleteEmail } from "@/lib/email";
 import type { Report, AnalyzeResponse } from "@/lib/types";
 
 export const maxDuration = 60;
+
+// ── Analysis cache: domain → cached analysis (5-minute TTL) ───────────────────
+type CachedAnalysis = {
+  scraped: Awaited<ReturnType<typeof scrapeStore>>;
+  rawScore: number;
+  signals: ReturnType<typeof calculateTrustScore>["signals"];
+  returnRiskRules: ReturnType<typeof calculateReturnRisk>["risk"];
+  ai: Awaited<ReturnType<typeof analyzeWithAI>>;
+  expiresAt: number;
+};
+const analysisCache = new Map<string, CachedAnalysis>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 // ── Simple in-memory rate limiter (per process instance) ──────────────────────
 const rl = new Map<string, { count: number; resetAt: number }>();
@@ -40,6 +53,9 @@ function extractStoreName(pageTitle: string, domain: string): string {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeResponse>> {
+  let checkConsumed = false;
+  let refundUserId: string | null = null;
+
   try {
     // ── 1. Rate limiting (IP-based) ──────────────────────────────────────────
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -64,6 +80,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
 
     // ── 3. Quota check ───────────────────────────────────────────────────────
     const { success: hasQuota, remaining, plan } = await useCheck(user.id);
+    if (hasQuota) { checkConsumed = true; refundUserId = user.id; }
     if (!hasQuota) {
       return NextResponse.json({
         success: false,
@@ -82,18 +99,28 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     const url = normalizeUrl(rawUrl);
     if (!isValidUrl(url)) return NextResponse.json({ success: false, error: "Please enter a valid URL." }, { status: 400 });
 
-    // ── 5. Scrape ────────────────────────────────────────────────────────────
-    const scraped = await scrapeStore(url);
+    // ── 5. Scrape + Score + AI (with domain-level cache) ─────────────────────
+    const domain = new URL(url).hostname.replace(/^www\./, "");
+    const now = Date.now();
+    const cached = analysisCache.get(domain);
+    let scraped: CachedAnalysis["scraped"];
+    let rawScore: number;
+    let signals: CachedAnalysis["signals"];
+    let returnRiskRules: CachedAnalysis["returnRiskRules"];
+    let ai: CachedAnalysis["ai"];
 
-    // ── 6. Scoring ───────────────────────────────────────────────────────────
-    const { trustScore: rawScore, signals } = calculateTrustScore(scraped);
-    const { risk: returnRiskRules } = calculateReturnRisk(scraped);
+    if (cached && now < cached.expiresAt) {
+      ({ scraped, rawScore, signals, returnRiskRules, ai } = cached);
+    } else {
+      scraped = await scrapeStore(url);
+      ({ trustScore: rawScore, signals } = calculateTrustScore(scraped));
+      ({ risk: returnRiskRules } = calculateReturnRisk(scraped));
+      ai = await analyzeWithAI(scraped, rawScore, returnRiskRules, locale);
+      analysisCache.set(domain, { scraped, rawScore, signals, returnRiskRules, ai, expiresAt: now + CACHE_TTL_MS });
+    }
 
-    // ── 7. AI analysis (parallel) ────────────────────────────────────────────
-    const [ai, priceAnalysis] = await Promise.all([
-      analyzeWithAI(scraped, rawScore, returnRiskRules, locale),
-      planFeatures.priceAnalysis ? analyzeProductPrices(scraped.products) : Promise.resolve([]),
-    ]);
+    // ── 6. Price analysis (never cached — plan-gated) ────────────────────────
+    const priceAnalysis = planFeatures.priceAnalysis ? await analyzeProductPrices(scraped.products) : [];
 
     const finalTrustScore = Math.min(100, Math.max(0, rawScore + ai.trustScoreAdjustment));
 
@@ -149,6 +176,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       await saveReport(report);
     }
 
+    // Fire-and-forget check-complete email
+    sendCheckCompleteEmail(user.email, user.name, report.storeName, report.trustScore, report.verdict, id).catch(() => {});
+
     return NextResponse.json({
       success: true,
       reportId: id,
@@ -157,6 +187,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     });
   } catch (err) {
     console.error("Analyze error:", err);
+    if (checkConsumed && refundUserId) {
+      await addChecks(refundUserId, 1).catch(() => {});
+    }
     return NextResponse.json({ success: false, error: "Analysis failed. Please try again." }, { status: 500 });
   }
 }

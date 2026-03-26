@@ -59,6 +59,7 @@ const stats = [
 
 export function ThreatHook() {
   const [variant, setVariant] = useState<(typeof VARIANTS)[number]>(VARIANTS[0]);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   useEffect(() => {
     const stored = localStorage.getItem("th_variant");
     const parsed = stored !== null ? parseInt(stored, 10) : NaN;
@@ -67,6 +68,10 @@ export function ThreatHook() {
       : Math.floor(Math.random() * VARIANTS.length);
     if (isNaN(parsed) || stored === null) localStorage.setItem("th_variant", String(idx));
     setVariant(VARIANTS[idx]);
+
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(r => setIsLoggedIn(r.ok))
+      .catch(() => setIsLoggedIn(false));
   }, []);
 
   return (
@@ -161,10 +166,10 @@ export function ThreatHook() {
             </p>
           </div>
 
-          <a href="/register"
+          <a href={isLoggedIn ? "/dashboard" : "/register"}
             className="relative shrink-0 rounded-2xl px-6 py-3 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
             style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 24px rgba(99,102,241,0.3)" }}>
-            {variant.cta}
+            {isLoggedIn ? "Check a store now" : variant.cta}
           </a>
         </motion.div>
       </div>

@@ -156,7 +156,7 @@ Return ONLY this JSON (no markdown, no explanation):
       scamPatterns: Array.isArray(parsed.scamPatterns) ? parsed.scamPatterns.slice(0, 5) : [],
     };
   } catch (err) {
-    console.error("OpenAI analysis failed:", err);
+    console.error("Claude analysis failed:", err);
     // Fallback when AI fails
     return buildFallbackAnalysis(data, trustScore, returnRiskFromRules);
   }

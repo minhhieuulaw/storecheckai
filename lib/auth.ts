@@ -70,7 +70,7 @@ export async function createUser(email: string, name: string, passwordHash: stri
     name: name.trim(),
     passwordHash,
     plan: "free",
-    checksRemaining: 0,
+    checksRemaining: 1,
     createdAt,
   });
   return (await findUser(email))!;
