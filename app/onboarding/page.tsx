@@ -87,13 +87,13 @@ export default function OnboardingPage() {
       style={{ background: "#07070f" }}>
 
       {/* Logo */}
-      <div className="flex items-center gap-2.5 mb-10">
+      <a href="/dashboard" className="flex items-center gap-2.5 mb-10 hover:opacity-80 transition-opacity">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl"
           style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
           <Shield className="h-5 w-5 text-white" />
         </div>
         <span className="text-base font-bold text-white tracking-tight">StorecheckAI</span>
-      </div>
+      </a>
 
       {/* Step indicators */}
       <div className="flex items-center gap-3 mb-10">

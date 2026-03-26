@@ -138,7 +138,7 @@ export default function ManageSubscriptionPage() {
       {/* Navbar */}
       <nav className="border-b px-6 py-4 flex items-center justify-between"
         style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(7,7,15,0.8)", backdropFilter: "blur(12px)" }}>
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg"
             style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
             <Shield className="h-3.5 w-3.5 text-white" />

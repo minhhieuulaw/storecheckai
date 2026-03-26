@@ -47,11 +47,13 @@ export default function ForgotPasswordPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl mb-4"
-            style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 32px rgba(99,102,241,0.3)" }}>
-            <Shield className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">StorecheckAI</h1>
+          <a href="/" className="flex flex-col items-center gap-1 group">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl mb-3 transition-transform group-hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 0 32px rgba(99,102,241,0.3)" }}>
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">StorecheckAI</h1>
+          </a>
           <p className="text-sm text-gray-500 mt-1">{fp.subtitle}</p>
         </div>
 
