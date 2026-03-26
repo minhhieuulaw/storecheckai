@@ -4,6 +4,7 @@ import { users, reports, settings } from "./schema";
 import type { SessionPayload } from "./auth";
 import { verifySession } from "./auth";
 import { cookies } from "next/headers";
+import type { NextRequest } from "next/server";
 
 // ── Admin identity check ────────────────────────────────────────────────────────
 
@@ -12,9 +13,11 @@ export function isAdminEmail(email: string): boolean {
   return adminEmail.length > 0 && email.toLowerCase() === adminEmail.toLowerCase();
 }
 
-export async function requireAdminSession(): Promise<SessionPayload> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
+export async function requireAdminSession(req?: NextRequest): Promise<SessionPayload> {
+  // Prefer req.cookies (Route Handler context) over next/headers cookies() (Server Component context)
+  const token = req
+    ? req.cookies.get("session")?.value
+    : (await cookies()).get("session")?.value;
   if (!token) throw new Error("UNAUTHORIZED");
   const session = await verifySession(token);
   if (!session?.email) throw new Error("UNAUTHORIZED");

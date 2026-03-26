@@ -1,12 +1,12 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession, getAdminStats } from "@/lib/admin";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
     const stats = await getAdminStats();
     return NextResponse.json({ success: true, stats });
   } catch (err: unknown) {

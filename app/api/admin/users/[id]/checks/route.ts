@@ -10,7 +10,7 @@ import { users } from "@/lib/schema";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
     const { id } = await params;
     const body = await req.json();
     const delta = parseInt(body?.delta, 10);

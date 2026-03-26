@@ -5,9 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession, getMaintenanceMode, setMaintenanceMode } from "@/lib/admin";
 import type { MaintenanceSettings } from "@/lib/admin";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
     const data = await getMaintenanceMode();
     return NextResponse.json({ success: true, maintenance: data });
   } catch (err: unknown) {
@@ -20,7 +20,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
     const body = await req.json();
     const data: MaintenanceSettings = {
       enabled: Boolean(body.enabled),

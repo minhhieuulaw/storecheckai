@@ -9,7 +9,7 @@ import { eq, desc, sql } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
 
     const { searchParams } = req.nextUrl;
     const status   = searchParams.get("status") || undefined; // open | replied | closed

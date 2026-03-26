@@ -6,7 +6,7 @@ import { requireAdminSession, getAdminUsers } from "@/lib/admin";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
     const { searchParams } = req.nextUrl;
     const search   = searchParams.get("search") || undefined;
     const page     = Math.max(1, parseInt(searchParams.get("page") || "1", 10));

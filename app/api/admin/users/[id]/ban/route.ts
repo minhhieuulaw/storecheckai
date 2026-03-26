@@ -7,7 +7,7 @@ import { findUserById, updateUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requireAdminSession();
+    const session = await requireAdminSession(req);
     const { id } = await params;
     const body = await req.json();
     const banned = Boolean(body?.banned);

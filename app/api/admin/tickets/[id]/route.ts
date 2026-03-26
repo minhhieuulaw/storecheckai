@@ -12,7 +12,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
 
     const { id } = await params;
     const body = await req.json().catch(() => null);
