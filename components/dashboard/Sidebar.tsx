@@ -30,13 +30,16 @@ export function Sidebar() {
       style={{ background: "rgba(9,9,18,0.98)", borderColor: "rgba(255,255,255,0.06)" }}>
 
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <button
+        onClick={() => { router.push("/dashboard"); router.refresh(); }}
+        className="flex items-center gap-2.5 px-5 py-5 border-b w-full text-left hover:opacity-80 transition-opacity"
+        style={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
           style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
           <Shield className="h-4 w-4 text-white" />
         </div>
         <span className="text-sm font-bold text-white tracking-tight">StorecheckAI</span>
-      </div>
+      </button>
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
