@@ -133,6 +133,10 @@ export interface Report {
   manipulationTactics: string[];
   reviewPlatforms: string[];
 
+  // Risk signals
+  nonDeliveryRisk: boolean;
+  scamPatterns: string[];
+
   // Meta
   ogImage: string | null;
   isPartialData: boolean;

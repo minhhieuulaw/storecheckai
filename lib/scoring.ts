@@ -227,7 +227,28 @@ export function calculateTrustScore(data: ScrapedData): ScoringResult {
   }
 
   // Normalize to 100
-  const trustScore = Math.min(100, Math.round((raw / MAX_POINTS) * 100));
+  let trustScore = Math.min(100, Math.round((raw / MAX_POINTS) * 100));
+
+  // ── POST-NORMALIZATION PENALTIES (applied after base score) ──────────────
+  // Bad Trustpilot with enough reviews is a strong real-world signal.
+  // These deductions override the optimistic technical-signals score.
+  if (data.trustpilotRating !== null) {
+    const r     = data.trustpilotRating;
+    const count = data.trustpilotReviewCount ?? 0;
+    if (count >= 3) {
+      let deduction = 0;
+      if      (r < 2.0) deduction = 32;
+      else if (r < 2.5) deduction = 24;
+      else if (r < 3.0) deduction = 16;
+      else if (r < 3.5) deduction = 6;
+      if (deduction > 0) {
+        trustScore = Math.max(0, trustScore - deduction);
+        // Overwrite the Trustpilot signal detail to show the deduction
+        const existing = signals.find(s => s.name === "Trustpilot");
+        if (existing) existing.detail += ` — score penalty applied (-${deduction} pts)`;
+      }
+    }
+  }
 
   return { trustScore, signals };
 }

@@ -489,6 +489,34 @@ export default function ReportPage() {
           </motion.div>
         )}
 
+        {/* ── NON-DELIVERY RISK WARNING ───────────────────────────────────── */}
+        {report.nonDeliveryRisk && (
+          <motion.div {...fadeUp} className="mb-5 rounded-2xl px-5 py-4"
+            style={{ background: "rgba(239,68,68,0.09)", border: "1px solid rgba(239,68,68,0.35)" }}>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-red-300 mb-1">
+                  Non-delivery risk detected
+                </p>
+                <p className="text-xs text-red-400/80 mb-2">
+                  Customer reviews contain patterns indicating orders may not be fulfilled or refunds refused.
+                </p>
+                {report.scamPatterns && report.scamPatterns.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {report.scamPatterns.map((p, i) => (
+                      <span key={i} className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
+                        style={{ background: "rgba(239,68,68,0.15)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.25)" }}>
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── STORE HERO ──────────────────────────────────────────────────── */}
         <motion.div {...fadeUp} className="mb-4 rounded-2xl overflow-hidden"
           style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>

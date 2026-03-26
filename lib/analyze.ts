@@ -32,6 +32,8 @@ export interface AIAnalysis {
   finalTake: string;
   trustScoreAdjustment: number;
   translatedReviews: string[];
+  nonDeliveryRisk: boolean;
+  scamPatterns: string[];
 }
 
 const LOCALE_LANGUAGE: Record<string, string> = {
@@ -44,6 +46,7 @@ Rules:
 - Be direct and specific. Never vague.
 - Never use words: "fake", "scam", "fraud", "fraudulent", "illegal"
 - For suspicious patterns use: "unusual patterns", "low-confidence signals", "raises questions"
+- trustScoreAdjustment range: -30 to +15. Use negative values aggressively when reviews are poor or suspicious patterns exist. Use -20 to -30 for stores with very bad Trustpilot ratings (below 3.0) combined with complaints about non-delivery or no refunds. Use -10 to -20 for stores with bad reviews (below 3.5) or overpriced products with poor reviews. Use +5 to +15 for genuinely excellent stores with strong positive signals.
 - Output ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Start your response with { and end with }.`;
 
 export async function analyzeWithAI(data: ScrapedData, trustScore: number, returnRiskFromRules: RiskLevel, locale = "en"): Promise<AIAnalysis> {
@@ -93,6 +96,12 @@ ${reviewsExist ? `- Trustpilot review snippets:\n${data.trustpilotReviews!.slice
 - Rule-based return risk: ${returnRiskFromRules}
 ${data.scrapeError ? `- Note: ${data.scrapeError}` : ""}
 
+NON-DELIVERY & PRICING ANALYSIS RULES:
+- Scan Trustpilot review snippets for non-delivery signals: "never received", "never arrived", "didn't receive", "no package", "hasn't shown up", "still waiting", "months waiting", "no tracking", "lost package", "where is my order", "no refund", "refused refund", "ghosted", "no response", "disappeared". If 2+ such signals found → set nonDeliveryRisk=true, add specific patterns to scamPatterns[].
+- If store has overpriced/marked_up products AND Trustpilot below 3.5 → add "Overpriced products with poor customer ratings" to suspiciousSignals.
+- If Trustpilot below 3.0 with 3+ reviews → verdict must be CAUTION or SKIP, never BUY.
+- If nonDeliveryRisk=true → verdict must be SKIP, add strong warning to finalTake.
+
 Return ONLY this JSON (no markdown, no explanation):
 {
   "verdict": "BUY" | "CAUTION" | "SKIP",
@@ -109,6 +118,8 @@ Return ONLY this JSON (no markdown, no explanation):
   "whoShouldAvoid": "1-2 sentences describing who should avoid this store",
   "finalTake": "2-3 sentences of honest, direct shopping advice",
   "trustScoreAdjustment": 0,
+  "nonDeliveryRisk": false,
+  "scamPatterns": [],
   "translatedReviews": ${reviewsExist ? `["each Trustpilot snippet translated to ${language}"]` : "[]"}
 }`;
 
@@ -139,8 +150,10 @@ Return ONLY this JSON (no markdown, no explanation):
       whoShouldBuy: parsed.whoShouldBuy || "",
       whoShouldAvoid: parsed.whoShouldAvoid || "",
       finalTake: parsed.finalTake || "",
-      trustScoreAdjustment: typeof parsed.trustScoreAdjustment === "number" ? Math.max(-10, Math.min(10, parsed.trustScoreAdjustment)) : 0,
+      trustScoreAdjustment: typeof parsed.trustScoreAdjustment === "number" ? Math.max(-30, Math.min(15, parsed.trustScoreAdjustment)) : 0,
       translatedReviews: Array.isArray(parsed.translatedReviews) ? parsed.translatedReviews.slice(0, 4) : [],
+      nonDeliveryRisk: parsed.nonDeliveryRisk === true,
+      scamPatterns: Array.isArray(parsed.scamPatterns) ? parsed.scamPatterns.slice(0, 5) : [],
     };
   } catch (err) {
     console.error("OpenAI analysis failed:", err);
@@ -175,6 +188,8 @@ function buildFallbackAnalysis(data: ScrapedData, trustScore: number, returnRisk
     finalTake: trustScore >= 65 ? "This store appears legitimate. Proceed with normal caution." : trustScore >= 40 ? "Exercise caution. Verify the store before purchasing." : "Too many trust signals are missing. We recommend looking elsewhere.",
     trustScoreAdjustment: 0,
     translatedReviews: [],
+    nonDeliveryRisk: false,
+    scamPatterns: [],
   };
 }
 

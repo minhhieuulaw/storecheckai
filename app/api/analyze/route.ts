@@ -136,6 +136,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       manipulationTactics:  planFeatures.fullReport ? scraped.manipulationTactics  : [],
       reviewPlatforms:      planFeatures.fullReport ? scraped.reviewPlatforms       : [],
 
+      nonDeliveryRisk: ai.nonDeliveryRisk,
+      scamPatterns:    ai.scamPatterns,
+
       ogImage:       scraped.ogImage,
       isPartialData: !!scraped.scrapeError,
       scrapeError:   scraped.scrapeError,
