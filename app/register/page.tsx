@@ -31,7 +31,7 @@ export default function RegisterPage() {
       const data = await res.json() as { success?: boolean; error?: string };
       if (!data.success) { setError(data.error ?? "Registration failed."); return; }
       setDone(true);
-      setTimeout(() => { router.push("/dashboard/onboarding"); router.refresh(); }, 1400);
+      setTimeout(() => { router.push("/onboarding"); router.refresh(); }, 1400);
     } catch {
       setError(t.auth.login.networkError);
     } finally {
