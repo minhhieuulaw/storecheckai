@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getServerSession, getServerUser } from "@/lib/server-auth";
 import { getUserReports } from "@/lib/store";
 import { QuickAnalyze } from "@/components/dashboard/QuickAnalyze";
+import { VerifyEmailBanner } from "@/components/dashboard/VerifyEmailBanner";
 import { BarChart3, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Clock, Zap, ShieldAlert } from "lucide-react";
 import type { Verdict } from "@/lib/types";
 
@@ -29,12 +30,17 @@ const PLAN_LABELS: Record<string, { label: string; color: string; bg: string }> 
   pro:      { label: "Pro",         color: "#f59e0b", bg: "rgba(245,158,11,0.1)"  },
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage(
+  { searchParams }: { searchParams: Promise<{ verify?: string }> },
+) {
   const session = await getServerSession();
   if (!session) redirect("/login?from=/dashboard");
 
   const user = await getServerUser();
   if (!user) redirect("/login?from=/dashboard");
+
+  const params = await searchParams;
+  const verifyStatus = params.verify; // 'success' | 'expired' | 'invalid' | 'error'
 
   const reports = await getUserReports(user.id);
   const recent  = reports.slice(0, 5);
@@ -53,10 +59,12 @@ export default async function DashboardPage() {
     { label: "Avoid",         value: skipCount,       icon: XCircle,       color: "#f87171" },
   ];
 
-  const firstName  = user.name.split(" ")[0];
-  const planInfo   = PLAN_LABELS[user.plan] ?? PLAN_LABELS.free;
-  const checks     = user.checksRemaining;
-  const isOut      = checks === 0;
+  const firstName        = user.name.split(" ")[0];
+  const planInfo         = PLAN_LABELS[user.plan] ?? PLAN_LABELS.free;
+  const checks           = user.checksRemaining;
+  const needsVerification = !user.emailVerified;
+  // Don't show "out of checks" upgrade banner for unverified users (they just need to verify)
+  const isOut      = checks === 0 && !needsVerification;
   const isLow      = checks > 0 && checks <= 2;
   const checksColor = isOut ? "#f87171" : isLow ? "#fb923c" : "#e5e7eb";
   const checksBg    = isOut ? "rgba(239,68,68,0.08)"  : isLow ? "rgba(251,146,60,0.08)" : "rgba(255,255,255,0.04)";
@@ -101,6 +109,14 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Email verification banner */}
+      {needsVerification && verifyStatus !== "success" && (
+        <VerifyEmailBanner />
+      )}
+      {verifyStatus === "success" && (
+        <VerifyEmailBanner verifySuccess />
+      )}
 
       {/* Out of checks banner */}
       {isOut && (

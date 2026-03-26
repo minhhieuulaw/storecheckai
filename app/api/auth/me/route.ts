@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
       plan: user.plan,
       checksRemaining: user.checksRemaining,
       createdAt: user.createdAt,
+      emailVerified: user.emailVerified,
     },
   });
 }

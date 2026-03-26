@@ -28,10 +28,11 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ name, email, password }),
       });
-      const data = await res.json() as { success?: boolean; error?: string };
+      const data = await res.json() as { success?: boolean; needsVerification?: boolean; error?: string };
       if (!data.success) { setError(data.error ?? "Registration failed."); return; }
       setDone(true);
-      setTimeout(() => { router.push("/onboarding"); router.refresh(); }, 1400);
+      // Redirect to dashboard after short delay (banner will show there)
+      setTimeout(() => { router.push("/dashboard"); router.refresh(); }, 2200);
     } catch {
       setError(t.auth.login.networkError);
     } finally {
@@ -82,11 +83,14 @@ export default function RegisterPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center py-8 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl mb-4"
-                  style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)" }}>
-                  <CheckCircle2 className="h-8 w-8 text-green-400" />
+                  style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)" }}>
+                  <Shield className="h-8 w-8 text-violet-400" />
                 </div>
                 <p className="text-xl font-bold text-white">Account created!</p>
-                <p className="text-sm text-gray-500 mt-1">Redirecting to dashboard…</p>
+                <p className="text-sm text-gray-400 mt-2 leading-relaxed max-w-xs">
+                  Check your inbox — we sent a verification link to claim your <span className="text-violet-400 font-medium">1 free check</span>.
+                </p>
+                <p className="text-xs text-gray-600 mt-3">Redirecting to dashboard…</p>
               </motion.div>
             ) : (
               <motion.form key="form" onSubmit={handleSubmit} className="space-y-4" initial={{ opacity: 1 }}>

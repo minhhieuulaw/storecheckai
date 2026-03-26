@@ -43,6 +43,32 @@ function emailShell(content: string): string {
 </html>`;
 }
 
+// ── Email verification ────────────────────────────────────────────────────────
+export async function sendVerificationEmail(toEmail: string, toName: string, verifyUrl: string): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+  const html = emailShell(`
+    <p style="margin:0 0 6px;color:#e5e7eb;font-size:16px;font-weight:600;">Welcome, ${toName}! 🎉</p>
+    <p style="margin:0 0 20px;color:#9ca3af;font-size:14px;line-height:1.6;">
+      Verify your email to claim your <strong style="color:#a5b4fc;">1 free store check</strong> — no card required.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+      <tr><td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:14px 32px;text-align:center;">
+        <a href="${verifyUrl}" style="color:white;text-decoration:none;font-size:14px;font-weight:600;">Verify email &amp; claim free check →</a>
+      </td></tr>
+    </table>
+    <p style="margin:0 0 20px;color:#6b7280;font-size:11px;text-align:center;word-break:break-all;">${verifyUrl}</p>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.07);margin:0 0 16px;">
+    <p style="margin:0;color:#6b7280;font-size:11px;line-height:1.6;">This link expires in 24 hours. If you didn't create this account, ignore this email.</p>
+  `);
+
+  await getResend().emails.send({
+    from:    FROM_EMAIL,
+    to:      toEmail,
+    subject: "Verify your StorecheckAI email 🛡️",
+    html,
+  });
+}
+
 // ── Welcome email ─────────────────────────────────────────────────────────────
 export async function sendWelcomeEmail(toEmail: string, toName: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;

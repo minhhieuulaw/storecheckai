@@ -28,6 +28,8 @@ export interface User {
   stripeSubscriptionId: string | null;
   createdAt: string;
   isBanned: boolean;
+  emailVerified: boolean;         // null legacy rows treated as true
+  registrationIp: string | null;
 }
 
 export interface SessionPayload {
@@ -48,6 +50,8 @@ function rowToUser(r: UserRow): User {
     stripeSubscriptionId: r.stripeSubscriptionId ?? null,
     createdAt: r.createdAt,
     isBanned: r.isBanned ?? false,
+    emailVerified: r.emailVerified ?? true,  // null = legacy user, treat as verified
+    registrationIp: r.registrationIp ?? null,
   };
 }
 
@@ -61,7 +65,9 @@ export async function findUserById(id: string): Promise<User | null> {
   return rows[0] ? rowToUser(rows[0]) : null;
 }
 
-export async function createUser(email: string, name: string, passwordHash: string): Promise<User> {
+export async function createUser(
+  email: string, name: string, passwordHash: string, registrationIp?: string,
+): Promise<User> {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   await db.insert(users).values({
@@ -70,10 +76,47 @@ export async function createUser(email: string, name: string, passwordHash: stri
     name: name.trim(),
     passwordHash,
     plan: "free",
-    checksRemaining: 1,
+    checksRemaining: 0,           // credited on email verification
+    emailVerified: false,
+    registrationIp: registrationIp ?? null,
     createdAt,
   });
   return (await findUser(email))!;
+}
+
+export async function generateEmailVerifyToken(userId: string): Promise<string> {
+  const token   = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+  await db.update(users)
+    .set({ emailVerifyToken: token, emailVerifyExpires: expires })
+    .where(eq(users.id, userId));
+  return token;
+}
+
+export async function consumeEmailVerifyToken(
+  token: string, creditCheck: boolean,
+): Promise<User | null> {
+  const rows = await db.select().from(users).where(eq(users.emailVerifyToken, token)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  if (!row.emailVerifyExpires || new Date(row.emailVerifyExpires) < new Date()) return null;
+  await db.update(users)
+    .set({
+      emailVerified: true,
+      emailVerifyToken: null,
+      emailVerifyExpires: null,
+      checksRemaining: creditCheck ? (row.checksRemaining ?? 0) + 1 : row.checksRemaining ?? 0,
+    })
+    .where(eq(users.id, row.id));
+  return findUserById(row.id);
+}
+
+// Count all accounts ever created from this IP — caps free checks per IP
+export async function countAccountsByIp(ip: string): Promise<number> {
+  const rows = await db.select({ id: users.id })
+    .from(users)
+    .where(eq(users.registrationIp, ip));
+  return rows.length;
 }
 
 export async function updateUser(id: string, data: Partial<{
