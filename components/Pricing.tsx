@@ -15,15 +15,14 @@ function getPlans(t: Translations) {
       price: "$2.99", period: t.pricing.perCheck, overage: null,
       desc: p[0].desc, cta: p[0].cta, highlight: false,
       features: [
-        { text: f.basicTrust,         included: true  },
+        { text: f.fullTrustBreakdown, included: true  },
         { text: f.verdictBadge,       included: true  },
-        { text: f.reviewSummary,      included: true  },
-        { text: f.keyProsCons,        included: true  },
-        { text: f.priceComparison,    included: false },
-        { text: f.returnRisk,         included: false },
-        { text: f.redFlagBreakdown,   included: false },
-        { text: f.facebookCheck,      included: false },
-        { text: f.reportHistory,      included: false },
+        { text: f.priceComparisonFull,included: true  },
+        { text: f.returnRisk,         included: true  },
+        { text: f.suspiciousReviews,  included: true  },
+        { text: f.redFlagBreakdown,   included: true  },
+        { text: f.facebookCheck,      included: true  },
+        { text: f.reportHistorySaved, included: false },
       ],
       testimonial: {
         quote: "Saved me from a $140 fake sneaker site. Paid $3 and dodged a scam.",
@@ -32,7 +31,7 @@ function getPlans(t: Translations) {
     },
     {
       key: "personal", name: p[1].name, tag: t.pricing.mostPopular,
-      price: "$19.99", period: t.pricing.perMonth, overage: "$1.25 / check after 10",
+      price: "$19.99", period: t.pricing.perMonth, overage: null,
       desc: p[1].desc, cta: p[1].cta, highlight: true,
       features: [
         { text: f.checksMonthly10,    included: true },
@@ -52,7 +51,7 @@ function getPlans(t: Translations) {
     },
     {
       key: "pro", name: p[2].name, tag: null,
-      price: "$39.99", period: t.pricing.perMonth, overage: "$1.00 / check after 50",
+      price: "$39.99", period: t.pricing.perMonth, overage: null,
       desc: p[2].desc, cta: p[2].cta, highlight: false,
       features: [
         { text: f.checksMonthly50,    included: true },
@@ -106,6 +105,7 @@ export function Pricing() {
             </span>
           </h2>
           <p className="mt-4 text-gray-400 max-w-md mx-auto">{t.pricing.subtitle}</p>
+          <p className="mt-3 text-sm font-medium" style={{ color: "#a5b4fc" }}>{t.pricing.freeCheckNote}</p>
         </motion.div>
 
         <div className="grid gap-5 md:grid-cols-3 items-stretch">

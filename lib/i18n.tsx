@@ -59,7 +59,7 @@ export interface Translations {
   pricing: {
     badge: string; heading: string; headingAccent: string; subtitle: string;
     mostPopular: string; perCheck: string; perMonth: string;
-    processing: string; secureNote: string;
+    processing: string; secureNote: string; freeCheckNote: string;
     plans: Array<{ name: string; desc: string; cta: string }>;
     features: {
       basicTrust: string; verdictBadge: string; reviewSummary: string;
@@ -167,8 +167,9 @@ const en: Translations = {
     mostPopular: "Most popular", perCheck: "per check", perMonth: "per month",
     processing: "Processing…",
     secureNote: "Secure checkout via Stripe · Cancel anytime · Checks never expire within the billing period",
+    freeCheckNote: "🎁 New users get 1 free check — no card required.",
     plans: [
-      { name: "Starter", desc: "Pay only when you need it. No subscription, no commitment.", cta: "Buy a check" },
+      { name: "Starter", desc: "Full report, no subscription. Pay only when you need it.", cta: "Buy a check" },
       { name: "Personal", desc: "10 checks included. Full advanced reports every time.", cta: "Start Personal — $19.99/mo" },
       { name: "Pro", desc: "50 checks included. Best value for power users & teams.", cta: "Start Pro — $39.99/mo" },
     ],
@@ -299,8 +300,9 @@ const fr: Translations = {
     mostPopular: "Le plus populaire", perCheck: "par analyse", perMonth: "par mois",
     processing: "Traitement en cours…",
     secureNote: "Paiement sécurisé via Stripe · Annulation à tout moment · Les analyses n'expirent pas dans la période de facturation",
+    freeCheckNote: "🎁 Les nouveaux utilisateurs reçoivent 1 analyse gratuite — sans carte requise.",
     plans: [
-      { name: "Starter", desc: "Payez uniquement quand vous en avez besoin. Sans abonnement, sans engagement.", cta: "Acheter une analyse" },
+      { name: "Starter", desc: "Rapport complet, sans abonnement. Payez uniquement quand vous en avez besoin.", cta: "Acheter une analyse" },
       { name: "Personnel", desc: "10 analyses incluses. Rapports complets à chaque fois.", cta: "Démarrer Personnel — 19,99 $/mois" },
       { name: "Pro", desc: "50 analyses incluses. Meilleur rapport qualité-prix pour utilisateurs intensifs.", cta: "Démarrer Pro — 39,99 $/mois" },
     ],
@@ -431,8 +433,9 @@ const de: Translations = {
     mostPopular: "Am beliebtesten", perCheck: "pro Check", perMonth: "pro Monat",
     processing: "Verarbeitung…",
     secureNote: "Sicherer Checkout via Stripe · Jederzeit kündbar · Checks verfallen nicht innerhalb des Abrechnungszeitraums",
+    freeCheckNote: "🎁 Neue Nutzer erhalten 1 kostenlosen Check — keine Karte erforderlich.",
     plans: [
-      { name: "Starter", desc: "Zahlen Sie nur, wenn Sie es brauchen. Kein Abonnement, keine Verpflichtung.", cta: "Check kaufen" },
+      { name: "Starter", desc: "Vollständiger Bericht, kein Abonnement. Zahlen Sie nur, wenn Sie es brauchen.", cta: "Check kaufen" },
       { name: "Persönlich", desc: "10 Checks inklusive. Vollständige erweiterte Berichte jedes Mal.", cta: "Persönlich starten — 19,99 $/Monat" },
       { name: "Pro", desc: "50 Checks inklusive. Bestes Preis-Leistungs-Verhältnis für Power-User & Teams.", cta: "Pro starten — 39,99 $/Monat" },
     ],
@@ -563,8 +566,9 @@ const es: Translations = {
     mostPopular: "Más popular", perCheck: "por verificación", perMonth: "por mes",
     processing: "Procesando…",
     secureNote: "Pago seguro a través de Stripe · Cancela en cualquier momento · Las verificaciones no caducan durante el período de facturación",
+    freeCheckNote: "🎁 Los nuevos usuarios obtienen 1 verificación gratis — sin tarjeta requerida.",
     plans: [
-      { name: "Starter", desc: "Paga solo cuando lo necesites. Sin suscripción, sin compromiso.", cta: "Comprar una verificación" },
+      { name: "Starter", desc: "Informe completo, sin suscripción. Paga solo cuando lo necesites.", cta: "Comprar una verificación" },
       { name: "Personal", desc: "10 verificaciones incluidas. Informes completos avanzados en todo momento.", cta: "Empezar Personal — $19,99/mes" },
       { name: "Pro", desc: "50 verificaciones incluidas. Mejor valor para usuarios avanzados y equipos.", cta: "Empezar Pro — $39,99/mes" },
     ],
@@ -695,8 +699,9 @@ const pt: Translations = {
     mostPopular: "Mais popular", perCheck: "por verificação", perMonth: "por mês",
     processing: "Processando…",
     secureNote: "Checkout seguro via Stripe · Cancele a qualquer momento · Verificações não expiram no período de cobrança",
+    freeCheckNote: "🎁 Novos usuários ganham 1 verificação grátis — sem cartão necessário.",
     plans: [
-      { name: "Starter", desc: "Pague apenas quando precisar. Sem assinatura, sem compromisso.", cta: "Comprar uma verificação" },
+      { name: "Starter", desc: "Relatório completo, sem assinatura. Pague apenas quando precisar.", cta: "Comprar uma verificação" },
       { name: "Personal", desc: "10 verificações incluídas. Relatórios completos avançados toda vez.", cta: "Começar Personal — $19,99/mês" },
       { name: "Pro", desc: "50 verificações incluídas. Melhor custo-benefício para usuários avançados e equipes.", cta: "Começar Pro — $39,99/mês" },
     ],
@@ -827,8 +832,9 @@ const it: Translations = {
     mostPopular: "Più popolare", perCheck: "per verifica", perMonth: "al mese",
     processing: "Elaborazione…",
     secureNote: "Checkout sicuro tramite Stripe · Annulla in qualsiasi momento · Le verifiche non scadono nel periodo di fatturazione",
+    freeCheckNote: "🎁 I nuovi utenti ricevono 1 verifica gratuita — nessuna carta richiesta.",
     plans: [
-      { name: "Starter", desc: "Paga solo quando ne hai bisogno. Nessun abbonamento, nessun impegno.", cta: "Acquista una verifica" },
+      { name: "Starter", desc: "Report completo, senza abbonamento. Paga solo quando ne hai bisogno.", cta: "Acquista una verifica" },
       { name: "Personal", desc: "10 verifiche incluse. Report avanzati completi ogni volta.", cta: "Inizia Personal — $19,99/mese" },
       { name: "Pro", desc: "50 verifiche incluse. Il miglior rapporto qualità-prezzo per utenti avanzati e team.", cta: "Inizia Pro — $39,99/mese" },
     ],

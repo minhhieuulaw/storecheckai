@@ -24,7 +24,7 @@ export const stripe = new Proxy({} as Stripe, {
 export const STRIPE_PLANS = {
   starter: {
     name:        "Starter Check",
-    description: "1 basic store check — valid forever",
+    description: "1 full store check — valid forever, report not saved",
     price:       299,
     mode:        "payment"      as const,
     checks:      1,

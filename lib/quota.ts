@@ -14,9 +14,9 @@ export const PLAN_FEATURES: Record<PlanTier, {
   overagePerCheck: number | null;
 }> = {
   free:     { fullReport: false, priceAnalysis: false, fbCheck: false, savedHistory: false, checksPerMonth: 0,  overagePerCheck: null },
-  starter:  { fullReport: false, priceAnalysis: false, fbCheck: false, savedHistory: false, checksPerMonth: 0,  overagePerCheck: 2.99 },
-  personal: { fullReport: true,  priceAnalysis: true,  fbCheck: true,  savedHistory: true,  checksPerMonth: 10, overagePerCheck: 1.25 },
-  pro:      { fullReport: true,  priceAnalysis: true,  fbCheck: true,  savedHistory: true,  checksPerMonth: 50, overagePerCheck: 1.00 },
+  starter:  { fullReport: true,  priceAnalysis: true,  fbCheck: true,  savedHistory: false, checksPerMonth: 0,  overagePerCheck: null },
+  personal: { fullReport: true,  priceAnalysis: true,  fbCheck: true,  savedHistory: true,  checksPerMonth: 10, overagePerCheck: null },
+  pro:      { fullReport: true,  priceAnalysis: true,  fbCheck: true,  savedHistory: true,  checksPerMonth: 50, overagePerCheck: null },
 };
 
 /**
