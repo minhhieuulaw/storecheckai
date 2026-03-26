@@ -1,10 +1,19 @@
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import type { ScrapedData, Verdict, RiskLevel, ReviewConfidence, ScrapedProduct, PriceAnalysis } from "./types";
 
+// OpenAI — vision/price analysis only
 let _openai: OpenAI | null = null;
 function getOpenAI() {
   if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   return _openai;
+}
+
+// Claude — text/store analysis
+let _anthropic: Anthropic | null = null;
+function getClaude() {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _anthropic;
 }
 
 export interface AIAnalysis {
@@ -35,7 +44,7 @@ Rules:
 - Be direct and specific. Never vague.
 - Never use words: "fake", "scam", "fraud", "fraudulent", "illegal"
 - For suspicious patterns use: "unusual patterns", "low-confidence signals", "raises questions"
-- Always output valid JSON — nothing else, no markdown.`;
+- Output ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Start your response with { and end with }.`;
 
 export async function analyzeWithAI(data: ScrapedData, trustScore: number, returnRiskFromRules: RiskLevel, locale = "en"): Promise<AIAnalysis> {
   const language = LOCALE_LANGUAGE[locale] ?? "English";
@@ -104,18 +113,15 @@ Return ONLY this JSON (no markdown, no explanation):
 }`;
 
   try {
-    const response = await getOpenAI().chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: prompt },
-      ],
+    const response = await getClaude().messages.create({
+      model: "claude-sonnet-4-6",
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
-      max_tokens: 1000,
-      response_format: { type: "json_object" },
+      max_tokens: 1200,
     });
 
-    const raw = response.choices[0]?.message?.content || "{}";
+    const raw = (response.content[0] as { type: string; text: string })?.text || "{}";
     const parsed = JSON.parse(raw) as AIAnalysis;
 
     // Sanitize output
