@@ -109,7 +109,18 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return new Promise((resolve, reject) => {
     crypto.pbkdf2(password, salt, iterations, 32, "sha256", (err, key) => {
       if (err) reject(err);
-      else resolve(key.toString("hex") === stored);
+      else {
+        try {
+          // Timing-safe comparison prevents timing attacks on password hashes
+          const derived  = Buffer.from(key.toString("hex"));
+          const expected = Buffer.from(stored);
+          // timingSafeEqual requires equal-length buffers — mismatch means wrong hash format
+          if (derived.length !== expected.length) { resolve(false); return; }
+          resolve(crypto.timingSafeEqual(derived, expected));
+        } catch {
+          resolve(false);
+        }
+      }
     });
   });
 }

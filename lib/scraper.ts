@@ -3,6 +3,57 @@ import type { ScrapedData, SecurityHeaders, ScrapedProduct } from "./types";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const TIMEOUT = 12000;
+const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+// ─── SSRF protection ─────────────────────────────────────────────────────────
+// Block requests to private/loopback/link-local IPs and cloud metadata endpoints.
+// Defense-in-depth: called in both scrapeStore() (entry point) and fetchPage() (sub-requests).
+function isBlockedUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return true; // malformed URL → block
+  }
+
+  // Only allow HTTP(S)
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return true;
+
+  const host = parsed.hostname.toLowerCase();
+
+  // Localhost variants
+  if (host === "localhost" || host === "ip6-localhost") return true;
+
+  // IPv6 loopback / link-local
+  if (host === "::1" || host === "[::1]" || host.startsWith("fe80")) return true;
+
+  // Cloud metadata endpoints (AWS, GCP, Azure, DigitalOcean, …)
+  const blockedHosts = [
+    "169.254.169.254",          // AWS/GCP/Azure metadata
+    "metadata.google.internal",  // GCP
+    "metadata.internal",
+    "instance-data",             // EC2 alias
+  ];
+  if (blockedHosts.includes(host)) return true;
+
+  // IPv4 private / reserved ranges
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    if (
+      a === 0 ||                        // 0.x.x.x  (this network)
+      a === 10 ||                       // 10.x.x.x  (RFC 1918)
+      a === 127 ||                      // 127.x.x.x (loopback)
+      (a === 169 && b === 254) ||       // 169.254.x.x (link-local / metadata)
+      (a === 172 && b >= 16 && b <= 31) || // 172.16-31.x.x (RFC 1918)
+      (a === 192 && b === 168) ||       // 192.168.x.x (RFC 1918)
+      a === 198 ||                      // 198.18-19 (benchmarking)
+      a === 240                         // 240.x.x.x (reserved)
+    ) return true;
+  }
+
+  return false;
+}
 
 // Headers giả lập US browser — giúp nhận đúng giá USD và tránh geo-block
 const US_HEADERS: Record<string, string> = {
@@ -21,6 +72,9 @@ const US_HEADERS: Record<string, string> = {
 };
 
 async function fetchPage(url: string): Promise<string | null> {
+  // Defense-in-depth: block private/internal URLs even for sub-requests resolved from store HTML
+  if (isBlockedUrl(url)) return null;
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT);
@@ -30,7 +84,15 @@ async function fetchPage(url: string): Promise<string | null> {
     });
     clearTimeout(timer);
     if (!res.ok) return null;
-    return await res.text();
+
+    // Reject oversized responses to prevent DoS via huge HTML pages
+    const contentLength = res.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_BYTES) return null;
+
+    const text = await res.text();
+    if (text.length > MAX_RESPONSE_BYTES) return null; // double-check actual decoded size
+
+    return text;
   } catch {
     return null;
   }
@@ -42,6 +104,11 @@ interface HeadResult {
 }
 
 async function checkHeadRequest(url: string): Promise<HeadResult> {
+  if (isBlockedUrl(url)) return {
+    headers: { hsts: false, xFrameOptions: false, csp: false, xContentTypeOptions: false },
+    redirectsToNewDomain: false,
+  };
+
   try {
     const res = await fetch(url, {
       method: "HEAD",
@@ -647,6 +714,28 @@ function parseJsonLdProducts($: cheerio.CheerioAPI, baseUrl: string): ScrapedPro
 }
 
 export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
+  // Primary SSRF guard — reject private/internal URLs before any network call
+  if (isBlockedUrl(rawUrl)) {
+    const domain = extractDomain(rawUrl);
+    return {
+      url: rawUrl, domain, isHttps: rawUrl.startsWith("https://"), pageTitle: domain,
+      hasContactPage: false, hasPrivacyPolicy: false, hasReturnPolicy: false,
+      hasTermsOfService: false, hasPhoneNumber: false, hasEmailAddress: false,
+      hasAddress: false, hasSocialLinks: false, socialLinks: [], contactEmail: null,
+      returnPolicyText: null, aboutText: null, isShopify: false, ogImage: null,
+      ogDescription: null, domainAgeDays: null, domainCreatedAt: null,
+      hasShippingPolicy: false, shippingPolicyText: null, paymentMethods: [],
+      emailDomainMatch: null, hasAboutPage: false, aboutQualityScore: 0,
+      securityHeaders: { hsts: false, xFrameOptions: false, csp: false, xContentTypeOptions: false },
+      shipsFromUS: null, shippingOriginSignals: [], products: [],
+      trustpilotRating: null, trustpilotReviewCount: null, trustpilotReviews: [],
+      manipulationTactics: [], hasCookieConsent: false, hasBusinessRegistration: false,
+      businessEntityType: null, hasSiteReviews: false, reviewPlatforms: [],
+      redirectsToNewDomain: false,
+      scrapeError: "This URL is not accessible.",
+    };
+  }
+
   const domain = extractDomain(rawUrl);
   const baseUrl = extractBaseUrl(rawUrl);
   const isHttps = rawUrl.startsWith("https://");
