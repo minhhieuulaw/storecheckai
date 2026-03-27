@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession, getServerUser } from "@/lib/server-auth";
-import { getUserReports } from "@/lib/store";
+import { getUserReports, calcEstimatedSavings } from "@/lib/store";
 import { QuickAnalyze } from "@/components/dashboard/QuickAnalyze";
 import { VerifyEmailBanner } from "@/components/dashboard/VerifyEmailBanner";
-import { BarChart3, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Clock, Zap, ShieldAlert } from "lucide-react";
+import { BarChart3, CheckCircle2, AlertTriangle, XCircle, ArrowRight, Clock, Zap, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { Verdict } from "@/lib/types";
 
 function verdictIcon(v: Verdict) {
@@ -58,6 +58,8 @@ export default async function DashboardPage(
     { label: "Caution",       value: cautionCount,    icon: AlertTriangle, color: "#facc15" },
     { label: "Avoid",         value: skipCount,       icon: XCircle,       color: "#f87171" },
   ];
+
+  const savings = calcEstimatedSavings(reports);
 
   const firstName        = user.name.split(" ")[0];
   const planInfo         = PLAN_LABELS[user.plan] ?? PLAN_LABELS.free;
@@ -173,6 +175,32 @@ export default async function DashboardPage(
           </div>
         ))}
       </div>
+
+      {/* Estimated savings block */}
+      {savings.flaggedCount > 0 && (
+        <div className="mb-8 flex items-center justify-between gap-4 rounded-2xl px-6 py-5 flex-wrap"
+          style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.18)" }}>
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+              style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)" }}>
+              <ShieldCheck className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-0.5">
+                Estimated loss avoided
+              </p>
+              <p className="text-2xl font-extrabold text-emerald-400 leading-none">
+                ${savings.totalUsd.toLocaleString("en-US")}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 max-w-xs leading-relaxed">
+            Based on {savings.flaggedCount} flagged store{savings.flaggedCount > 1 ? "s" : ""}.
+            Conservative estimate using actual product prices where available,
+            otherwise industry median ($74/incident).
+          </p>
+        </div>
+      )}
 
       {/* Quick analyze */}
       <div className="mb-8">

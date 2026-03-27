@@ -3,6 +3,31 @@ import { db } from "./db";
 import { reports } from "./schema";
 import type { Report } from "./types";
 
+// ── Estimated savings ──────────────────────────────────────────────────────────
+// Based on BBB Scam Tracker 2023: median online shopping scam loss = $74
+const MEDIAN_SCAM_LOSS_USD = 74;
+
+export function calcEstimatedSavings(userReports: Report[]): {
+  totalUsd: number;
+  flaggedCount: number;
+} {
+  const flagged = userReports.filter(r =>
+    r.verdict === "SKIP" ||
+    (r.verdict === "CAUTION" && r.trustScore < 40),
+  );
+
+  const totalUsd = flagged.reduce((sum, r) => {
+    // Prefer priceUsd (already converted to USD), fallback priceNumeric, then median
+    const rawPrice = r.products?.[0]?.priceUsd ?? r.products?.[0]?.priceNumeric ?? 0;
+    const estimate = rawPrice > 2 && rawPrice < 500 ? rawPrice : MEDIAN_SCAM_LOSS_USD;
+    // CAUTION < 40 is less certain — weight 40%
+    const weight   = r.verdict === "SKIP" ? 1.0 : 0.4;
+    return sum + estimate * weight;
+  }, 0);
+
+  return { totalUsd: Math.round(totalUsd), flaggedCount: flagged.length };
+}
+
 export async function saveReport(report: Report): Promise<void> {
   await db.insert(reports).values({
     id:               report.id,
