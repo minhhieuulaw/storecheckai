@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ScrapedData, Verdict, RiskLevel, ReviewConfidence, ScrapedProduct, PriceAnalysis } from "./types";
+import { VERDICT_THRESHOLDS } from "./scoring";
 
 // OpenAI — vision/price analysis only
 let _openai: OpenAI | null = null;
@@ -163,7 +164,7 @@ Return ONLY this JSON (no markdown, no explanation):
 }
 
 function buildFallbackAnalysis(data: ScrapedData, trustScore: number, returnRisk: RiskLevel): AIAnalysis {
-  const verdict: Verdict = trustScore >= 65 ? "BUY" : trustScore >= 40 ? "CAUTION" : "SKIP";
+  const verdict: Verdict = trustScore >= VERDICT_THRESHOLDS.BUY ? "BUY" : trustScore >= VERDICT_THRESHOLDS.CAUTION ? "CAUTION" : "SKIP";
   return {
     verdict,
     verdictReason: trustScore >= 65 ? "Store shows solid trust signals." : trustScore >= 40 ? "Store has some trust signals but gaps remain." : "Store is missing too many trust signals.",

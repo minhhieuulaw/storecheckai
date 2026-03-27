@@ -386,8 +386,19 @@ export default function ReportPage() {
       .catch(() => setError("Failed to load report."));
   }, [id]);
 
-  function handleShare() {
-    navigator.clipboard.writeText(window.location.href);
+  async function handleShare() {
+    const url = window.location.href;
+    if (navigator.share && report) {
+      try {
+        await navigator.share({
+          title: `${report.storeName} — StorecheckAI`,
+          text: `Trust score: ${report.trustScore}/100 · Verdict: ${report.verdict}`,
+          url,
+        });
+        return;
+      } catch { /* user cancelled share */ }
+    }
+    navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -429,12 +440,12 @@ export default function ReportPage() {
           WebkitBackdropFilter: "blur(20px)",
         }}>
         <a
-          href="/"
+          href={isLoggedIn ? "/dashboard" : "/"}
           className="group flex items-center gap-2 text-sm text-gray-500 hover:text-gray-200 transition-colors">
           <motion.div whileHover={{ x: -3 }} transition={{ duration: 0.15 }}>
             <ArrowLeft className="h-4 w-4" />
           </motion.div>
-          Check another store
+          {isLoggedIn ? "Dashboard" : "Check another store"}
         </a>
         <div className="flex items-center gap-2">
           <motion.button
@@ -461,6 +472,20 @@ export default function ReportPage() {
       </motion.nav>
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+
+        {/* ── PARTIAL DATA WARNING ────────────────────────────────────────── */}
+        {report.isPartialData && (
+          <motion.div {...fadeUp} className="mb-4 rounded-2xl px-5 py-3.5"
+            style={{ background: "rgba(251,146,60,0.06)", border: "1px solid rgba(251,146,60,0.22)" }}>
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-4 w-4 text-orange-400 shrink-0" />
+              <p className="text-xs text-orange-300 leading-relaxed">
+                Some data could not be retrieved from this store (the site may block automated requests).
+                Results may be incomplete.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── BLACKLIST WARNING ───────────────────────────────────────────── */}
         {scamWarnings.length > 0 && (
@@ -1186,21 +1211,24 @@ export default function ReportPage() {
         )}
 
         {/* ── CTA / FOOTER ────────────────────────────────────────────────── */}
+        {/* Mobile padding so sticky bar doesn't overlap content */}
+        <div className="h-20 sm:hidden" aria-hidden="true" />
+
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={viewportOnce}
           transition={{ duration: 0.4 }}
-          className="flex flex-col items-center gap-3 text-center py-8 border-t"
+          className="hidden sm:flex flex-col items-center gap-3 text-center py-8 border-t"
           style={{ borderColor: "rgba(255,255,255,0.05)" }}>
           <motion.a
-            href="/"
+            href={isLoggedIn ? "/dashboard" : "/"}
             whileHover={{ scale: 1.02, boxShadow: "0 0 24px rgba(99,102,241,0.3)" }}
             whileTap={{ scale: 0.97 }}
             className="inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-semibold text-white transition-all"
             style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
             <Shield className="h-4 w-4" />
-            Check another store
+            {isLoggedIn ? "Back to Dashboard" : "Check another store"}
           </motion.a>
           <p className="text-[11px] text-gray-700">
             StorecheckAI · Analysis for informational purposes only
@@ -1208,6 +1236,43 @@ export default function ReportPage() {
         </motion.div>
 
       </main>
+
+      {/* ── MOBILE STICKY VERDICT BAR ───────────────────────────────────── */}
+      <motion.div
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.5, duration: 0.35 }}
+        className="sm:hidden fixed bottom-0 left-0 right-0 z-40"
+        style={{
+          background: "rgba(7,7,15,0.96)",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}>
+        <div className="flex items-center gap-3 px-4 py-3">
+          {/* Verdict pill */}
+          <div className="flex items-center gap-1.5 rounded-xl px-3 py-2 shrink-0"
+            style={{ background: vc.bg, border: `1px solid ${vc.border}` }}>
+            <VIcon className="h-4 w-4" style={{ color: vc.color }} />
+            <span className="text-xs font-bold" style={{ color: vc.color }}>{vc.label}</span>
+          </div>
+          {/* Score chip */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-lg font-extrabold tabular-nums" style={{ color: trustColor }}>{report.trustScore}</span>
+            <span className="text-[10px] text-gray-600">/100</span>
+          </div>
+          {/* Spacer */}
+          <div className="flex-1" />
+          {/* Check another CTA */}
+          <a
+            href={isLoggedIn ? "/dashboard" : "/"}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shrink-0"
+            style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
+            <Shield className="h-3.5 w-3.5" />
+            {isLoggedIn ? "Dashboard" : "Check another"}
+          </a>
+        </div>
+      </motion.div>
     </div>
   );
 }

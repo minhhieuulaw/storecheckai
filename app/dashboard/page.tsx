@@ -158,8 +158,8 @@ export default async function DashboardPage(
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {stats.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="rounded-2xl p-3 sm:p-5"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div key={label} className="rounded-2xl p-3 sm:p-5 relative overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: `inset 3px 0 0 ${color}50` }}>
             <div className="flex items-center justify-between mb-2 sm:mb-3">
               <span className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{label}</span>
               <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg shrink-0"
@@ -288,13 +288,21 @@ export default async function DashboardPage(
                     <p className="text-sm font-medium text-white truncate">{r.storeName}</p>
                     <p className="text-xs text-gray-600 truncate">{r.domain}</p>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-sm font-bold" style={{ color: scoreColor(r.trustScore) }}>{r.trustScore}</span>
-                    <div className={`flex items-center gap-1 text-xs font-medium ${verdictColor(r.verdict)}`}>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="hidden sm:inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold tabular-nums"
+                      style={{ background: `${scoreColor(r.trustScore)}18`, color: scoreColor(r.trustScore), border: `1px solid ${scoreColor(r.trustScore)}30` }}>
+                      {r.trustScore}
+                    </span>
+                    <div className={`flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-bold`}
+                      style={{
+                        background: r.verdict === "BUY" ? "rgba(74,222,128,0.1)" : r.verdict === "CAUTION" ? "rgba(250,204,21,0.1)" : "rgba(248,113,113,0.1)",
+                        color: r.verdict === "BUY" ? "#4ade80" : r.verdict === "CAUTION" ? "#facc15" : "#f87171",
+                        border: `1px solid ${r.verdict === "BUY" ? "rgba(74,222,128,0.2)" : r.verdict === "CAUTION" ? "rgba(250,204,21,0.2)" : "rgba(248,113,113,0.2)"}`,
+                      }}>
                       {verdictIcon(r.verdict)}
-                      {r.verdict}
+                      <span className="hidden sm:inline">{r.verdict}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <div className="hidden sm:flex items-center gap-1 text-xs text-gray-600">
                       <Clock className="h-3 w-3" />
                       {new Date(r.analyzedAt).toLocaleDateString()}
                     </div>

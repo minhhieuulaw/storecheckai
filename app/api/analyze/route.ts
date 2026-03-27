@@ -37,6 +37,20 @@ function rateLimit(key: string, max: number, windowMs: number): boolean {
   return true;
 }
 
+// Marketplace domains that are not independent stores — analyzing them is not useful
+const MARKETPLACE_DOMAINS = new Set([
+  "amazon.com", "amazon.co.uk", "amazon.de", "amazon.ca", "amazon.com.au",
+  "ebay.com", "ebay.co.uk", "etsy.com", "walmart.com", "target.com",
+  "bestbuy.com", "homedepot.com", "wayfair.com", "costco.com", "samsclub.com",
+  "aliexpress.com", "aliexpress.us", "temu.com", "shein.com", "wish.com",
+]);
+
+// URL shortener services that need to be resolved before analysis
+const URL_SHORTENERS = new Set([
+  "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "buff.ly",
+  "short.io", "rebrand.ly", "lnkd.in", "fb.me",
+]);
+
 function isValidUrl(raw: string): boolean {
   try { const u = new URL(raw); return u.protocol === "http:" || u.protocol === "https:"; }
   catch { return false; }
@@ -45,6 +59,18 @@ function normalizeUrl(raw: string): string {
   let url = raw.trim();
   if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://" + url;
   return url;
+}
+function checkUrlRestrictions(url: string): string | null {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    if (MARKETPLACE_DOMAINS.has(hostname)) {
+      return "This is a marketplace platform (e.g. Amazon, eBay). Paste the URL of an independent online store instead.";
+    }
+    if (URL_SHORTENERS.has(hostname)) {
+      return "Please paste the full store URL — shortened URLs (bit.ly, t.co, etc.) cannot be analyzed directly.";
+    }
+  } catch { /* invalid URL handled elsewhere */ }
+  return null;
 }
 function extractStoreName(pageTitle: string, domain: string): string {
   if (pageTitle && pageTitle.length > 0 && pageTitle !== domain)
@@ -97,7 +123,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     const locale = (body?.locale as string) || "en";
     if (!rawUrl) return NextResponse.json({ success: false, error: "URL is required." }, { status: 400 });
     const url = normalizeUrl(rawUrl);
-    if (!isValidUrl(url)) return NextResponse.json({ success: false, error: "Please enter a valid URL." }, { status: 400 });
+    if (!isValidUrl(url)) return NextResponse.json({ success: false, error: "Please enter a valid URL (e.g. https://mystore.com)." }, { status: 400 });
+    const restriction = checkUrlRestrictions(url);
+    if (restriction) return NextResponse.json({ success: false, error: restriction }, { status: 400 });
 
     // ── 5. Scrape + Score + AI (with domain-level cache) ─────────────────────
     const domain = new URL(url).hostname.replace(/^www\./, "");
