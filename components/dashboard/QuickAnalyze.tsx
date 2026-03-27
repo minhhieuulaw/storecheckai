@@ -55,15 +55,15 @@ export function QuickAnalyze({ checksRemaining }: Props) {
         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Quick Analyze</p>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="url"
             value={url}
             onChange={e => { setUrl(e.target.value); setError(""); }}
             onKeyDown={e => e.key === "Enter" && !loading && handleAnalyze()}
-            placeholder={locked ? "Upgrade to start analyzing stores…" : "https://store.com/product/..."}
+            placeholder={locked ? "Upgrade to analyze stores…" : "Paste any store or product URL…"}
             disabled={loading}
-            className="flex-1 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-600 outline-none transition-all disabled:opacity-50"
+            className="flex-1 min-w-0 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 outline-none transition-all disabled:opacity-50"
             style={{
               background: locked ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.05)",
               border: "1px solid rgba(255,255,255,0.09)",
@@ -76,7 +76,7 @@ export function QuickAnalyze({ checksRemaining }: Props) {
           <button
             onClick={handleAnalyze}
             disabled={loading || (!locked && !url.trim())}
-            className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            className="flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
             style={{ background: locked ? "rgba(99,102,241,0.4)" : "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
             {loading
               ? <Loader2 className="h-4 w-4 animate-spin" />

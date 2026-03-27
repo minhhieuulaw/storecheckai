@@ -278,7 +278,7 @@ export function SampleReport() {
 
             {/* ── Health Snapshot ── */}
             <div>
-              <div className="grid grid-cols-3 gap-2.5 mb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2">
                 <HealthBucket type="pass" label="Looking Good"    signals={SAMPLE.passing}  />
                 <HealthBucket type="warn" label="Worth Reviewing" signals={SAMPLE.warnings} />
                 <HealthBucket type="fail" label="Concerns"        signals={SAMPLE.failures} />

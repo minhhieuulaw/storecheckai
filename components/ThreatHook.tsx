@@ -148,7 +148,7 @@ export function ThreatHook() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.45, delay: 0.2 }}
-          className="relative rounded-3xl px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden"
+          className="relative rounded-3xl px-5 py-6 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden"
           style={{
             background: "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.06) 100%)",
             border: "1px solid rgba(99,102,241,0.22)",

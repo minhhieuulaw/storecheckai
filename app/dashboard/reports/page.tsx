@@ -58,7 +58,7 @@ export default function ReportsPage() {
   });
 
   return (
-    <div className="px-8 py-8 max-w-5xl mx-auto">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">My Reports</h1>
         <p className="text-sm text-gray-500 mt-1">All store checks linked to your account.</p>
@@ -78,12 +78,12 @@ export default function ReportsPage() {
             onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow = "none"; }}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-0.5 shrink-0">
           {(["ALL", "BUY", "CAUTION", "SKIP"] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className="px-3 py-2 rounded-xl text-xs font-medium transition-all"
+              className="px-3 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap"
               style={{
                 background: filter === f ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.04)",
                 border: filter === f ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(255,255,255,0.08)",
@@ -142,8 +142,8 @@ export default function ReportsPage() {
                   <span className="text-xs font-semibold" style={{ color: verdictText(r.verdict) }}>{r.verdict}</span>
                 </div>
 
-                {/* Date */}
-                <div className="flex items-center gap-1 text-xs text-gray-600 shrink-0">
+                {/* Date — hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-1 text-xs text-gray-600 shrink-0">
                   <Clock className="h-3 w-3" />
                   {new Date(r.analyzedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 </div>

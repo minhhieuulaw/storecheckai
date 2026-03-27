@@ -161,7 +161,7 @@ export function Hero() {
 
       {/* Stats */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55, duration: 0.5 }}
-        className="mt-16 flex gap-12 text-center">
+        className="mt-12 flex gap-6 sm:gap-12 text-center">
         {[
           { value: "50K+", label: "Stores analyzed" },
           { value: "30s", label: "Avg report time" },

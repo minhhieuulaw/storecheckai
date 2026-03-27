@@ -73,10 +73,10 @@ export default async function DashboardPage(
   const checksBorder = isOut ? "rgba(239,68,68,0.3)"  : isLow ? "rgba(251,146,60,0.25)" : "rgba(255,255,255,0.09)";
 
   return (
-    <div className="px-8 py-8 max-w-5xl mx-auto">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-5xl mx-auto">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
+      <div className="flex items-start justify-between mb-6 sm:mb-8 gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-white">Welcome back, {firstName} 👋</h1>
           <p className="text-sm text-gray-500 mt-1">Here&apos;s an overview of your store checks.</p>
@@ -125,79 +125,79 @@ export default async function DashboardPage(
 
       {/* Out of checks banner */}
       {isOut && (
-        <div className="mb-6 flex items-center justify-between rounded-2xl px-5 py-4"
+        <div className="mb-6 flex items-center gap-3 rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4"
           style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.22)" }}>
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
-            <p className="text-sm text-red-300">
-              You&apos;ve run out of checks.{" "}
-              <span className="text-gray-400">Upgrade your plan to keep analyzing stores.</span>
-            </p>
-          </div>
+          <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+          <p className="text-sm text-red-300 flex-1 min-w-0">
+            You&apos;ve run out of checks.{" "}
+            <span className="text-gray-400">Upgrade to keep analyzing.</span>
+          </p>
           <Link href="/dashboard/billing"
-            className="shrink-0 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-all hover:opacity-90"
+            className="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90 whitespace-nowrap"
             style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>
-            Upgrade now
+            Upgrade
           </Link>
         </div>
       )}
       {isLow && (
-        <div className="mb-6 flex items-center justify-between rounded-2xl px-5 py-4"
+        <div className="mb-6 flex items-center gap-3 rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4"
           style={{ background: "rgba(251,146,60,0.05)", border: "1px solid rgba(251,146,60,0.2)" }}>
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
-            <p className="text-sm text-orange-300">
-              Only {checks} check{checks > 1 ? "s" : ""} remaining.{" "}
-              <span className="text-gray-400">Upgrade to keep analyzing stores.</span>
-            </p>
-          </div>
+          <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
+          <p className="text-sm text-orange-300 flex-1 min-w-0">
+            Only {checks} check{checks > 1 ? "s" : ""} remaining.{" "}
+            <span className="text-gray-400">Top up to keep going.</span>
+          </p>
           <Link href="/dashboard/billing"
-            className="shrink-0 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-all hover:opacity-90"
+            className="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90 whitespace-nowrap"
             style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-            Upgrade
+            Top up
           </Link>
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {stats.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="rounded-2xl p-5"
+          <div key={label} className="rounded-2xl p-3 sm:p-5"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</span>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg"
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <span className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{label}</span>
+              <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg shrink-0"
                 style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
-                <Icon className="h-3.5 w-3.5" style={{ color }} />
+                <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" style={{ color }} />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white">{value}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Estimated savings block */}
       {savings.flaggedCount > 0 && (
-        <div className="mb-8 flex items-center justify-between gap-4 rounded-2xl px-6 py-5 flex-wrap"
+        <div className="mb-6 sm:mb-8 rounded-2xl px-4 py-4 sm:px-6 sm:py-5"
           style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.18)" }}>
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl shrink-0"
               style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)" }}>
-              <ShieldCheck className="h-5 w-5 text-emerald-400" />
+              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-0.5">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] sm:text-xs font-medium text-emerald-600 uppercase tracking-wider mb-0.5">
                 Estimated loss avoided
               </p>
-              <p className="text-2xl font-extrabold text-emerald-400 leading-none">
+              <p className="text-xl sm:text-2xl font-extrabold text-emerald-400 leading-none">
                 ${savings.totalUsd.toLocaleString("en-US")}
               </p>
             </div>
+            <p className="hidden sm:block text-xs text-gray-600 max-w-xs leading-relaxed text-right">
+              Based on {savings.flaggedCount} flagged store{savings.flaggedCount > 1 ? "s" : ""}.<br />
+              Conservative estimate using actual prices,<br />
+              otherwise median ($74/incident).
+            </p>
           </div>
-          <p className="text-xs text-gray-600 max-w-xs leading-relaxed">
-            Based on {savings.flaggedCount} flagged store{savings.flaggedCount > 1 ? "s" : ""}.
-            Conservative estimate using actual product prices where available,
-            otherwise industry median ($74/incident).
+          {/* Mobile-only compact description */}
+          <p className="sm:hidden mt-2 text-[11px] text-gray-600 leading-relaxed">
+            Based on {savings.flaggedCount} flagged store{savings.flaggedCount > 1 ? "s" : ""} · median $74/incident
           </p>
         </div>
       )}

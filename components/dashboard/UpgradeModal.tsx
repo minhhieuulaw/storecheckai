@@ -103,7 +103,7 @@ export function UpgradeModal({ open, onClose, reason = "upgrade" }: Props) {
             transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
             className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 pointer-events-none overflow-y-auto">
 
-            <div className="relative w-full max-w-3xl rounded-3xl p-7 pointer-events-auto"
+            <div className="relative w-full max-w-3xl rounded-3xl p-4 sm:p-7 pointer-events-auto"
               style={{
                 background: "#0d0d1a",
                 border: "1px solid rgba(139,92,246,0.25)",

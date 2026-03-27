@@ -1,0 +1,58 @@
+.wrapper {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #060610;
+}
+
+/* Desktop sidebar — visible on md+ */
+.sidebar {
+  display: flex;
+  flex-shrink: 0;
+}
+
+/* Mobile top bar — hidden on md+ */
+.mobileHeader {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(6, 6, 16, 0.96);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Spacer that offsets content below the fixed mobile header */
+.mobileSpacerInner {
+  display: none;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+/* Main scroll area */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* ── Mobile breakpoint (< 768px) ── */
+@media (max-width: 767px) {
+  .sidebar {
+    display: none;
+  }
+
+  .mobileHeader {
+    display: flex;
+  }
+
+  .mobileSpacerInner {
+    display: block;
+  }
+}

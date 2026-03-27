@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, FileText, Settings, LogOut, Shield, CreditCard, MessageCircle, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, FileText, Settings, LogOut, Shield, CreditCard, MessageCircle, AlertTriangle, X } from "lucide-react";
 import { motion } from "framer-motion";
 
 const nav = [
@@ -14,7 +14,7 @@ const nav = [
   { href: "/dashboard/report-scam",   label: "Report a Scam", icon: AlertTriangle },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -30,23 +30,32 @@ export function Sidebar() {
       style={{ background: "rgba(9,9,18,0.98)", borderColor: "rgba(255,255,255,0.06)" }}>
 
       {/* Logo */}
-      <button
-        onClick={() => { router.push("/dashboard"); router.refresh(); }}
-        className="flex items-center gap-2.5 px-5 py-5 border-b w-full text-left hover:opacity-80 transition-opacity"
+      <div className="flex items-center justify-between px-5 py-5 border-b"
         style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
-          style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-          <Shield className="h-4 w-4 text-white" />
-        </div>
-        <span className="text-sm font-bold text-white tracking-tight">StorecheckAI</span>
-      </button>
+        <button
+          onClick={() => { router.push("/dashboard"); router.refresh(); onClose?.(); }}
+          className="flex items-center gap-2.5 hover:opacity-80 transition-opacity text-left">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
+            style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+            <Shield className="h-4 w-4 text-white" />
+          </div>
+          <span className="text-sm font-bold text-white tracking-tight">StorecheckAI</span>
+        </button>
+        {onClose && (
+          <button onClick={onClose}
+            className="md:hidden flex items-center justify-center h-7 w-7 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label="Close menu">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {nav.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
-            <Link key={href} href={href}>
+            <Link key={href} href={href} onClick={onClose}>
               <motion.div
                 whileHover={{ x: 2 }}
                 className="relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"

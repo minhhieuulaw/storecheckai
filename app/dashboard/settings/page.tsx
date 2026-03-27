@@ -123,7 +123,7 @@ export default function SettingsPage() {
   const baseInput = { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" };
 
   return (
-    <div className="px-8 py-8 max-w-2xl mx-auto">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-2xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="text-sm text-gray-500 mt-1">Manage your account details.</p>
@@ -220,7 +220,7 @@ export default function SettingsPage() {
                   onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow = "none"; }}
                 />
                 <button type="button" onClick={() => setShowCur(!showCur)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors">
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-600 hover:text-gray-400 transition-colors">
                   {showCur ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
@@ -239,7 +239,7 @@ export default function SettingsPage() {
                   onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow = "none"; }}
                 />
                 <button type="button" onClick={() => setShowNew(!showNew)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors">
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-600 hover:text-gray-400 transition-colors">
                   {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>

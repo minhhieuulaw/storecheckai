@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
           <p className="text-sm text-gray-500 mt-1">{fp.subtitle}</p>
         </div>
 
-        <div className="rounded-3xl p-8"
+        <div className="rounded-3xl p-5 sm:p-8"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(16px)" }}>
 
           <AnimatePresence mode="wait">

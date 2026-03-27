@@ -81,7 +81,7 @@ export default function ReportScamPage() {
 
   if (success) {
     return (
-      <div className="px-8 py-12 max-w-2xl mx-auto">
+      <div className="px-4 py-8 sm:px-8 sm:py-12 max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           className="rounded-3xl p-10 text-center"
           style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.2)" }}>
@@ -102,7 +102,7 @@ export default function ReportScamPage() {
   }
 
   return (
-    <div className="px-8 py-8 max-w-2xl mx-auto">
+    <div className="px-4 py-6 sm:px-8 sm:py-8 max-w-2xl mx-auto">
       <button onClick={() => router.back()}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors mb-6">
         <ArrowLeft className="h-4 w-4" />
