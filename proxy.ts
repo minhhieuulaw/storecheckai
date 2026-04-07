@@ -20,6 +20,7 @@ const PUBLIC_PREFIXES = [
   "/api/facebook-check",
   "/api/report",   // public shareable report API
   "/api/og",       // OG image generation — public
+  "/api/health",   // health check — must be public for Docker healthcheck
   "/pricing",      // public pricing page
   "/checkout",     // success/cancel pages
   "/report",       // shareable public report pages
