@@ -15,13 +15,20 @@ export function isAdminEmail(email: string): boolean {
 
 /** Check if user has admin privileges (role-based, with email fallback for legacy) */
 export async function isAdmin(userId: string): Promise<boolean> {
-  const user = await db.select({ role: users.role, email: users.email })
-    .from(users).where(eq(users.id, userId)).limit(1);
-  if (!user[0]) return false;
-  // Primary: role-based check
-  if (user[0].role === "admin") return true;
-  // Fallback: email-based check (for legacy users before role column migration)
-  return isAdminEmail(user[0].email);
+  try {
+    const user = await db.select({ role: users.role, email: users.email })
+      .from(users).where(eq(users.id, userId)).limit(1);
+    if (!user[0]) return false;
+    // Primary: role-based check
+    if (user[0].role === "admin") return true;
+    // Fallback: email-based check (for legacy users before role column migration)
+    return isAdminEmail(user[0].email);
+  } catch {
+    // Fallback if role column doesn't exist yet (pre-migration)
+    const user = await db.execute(sql`SELECT email FROM users WHERE id = ${userId} LIMIT 1`);
+    if (!user.rows[0]) return false;
+    return isAdminEmail((user.rows[0] as { email: string }).email);
+  }
 }
 
 export async function requireAdminSession(req?: NextRequest): Promise<SessionPayload> {

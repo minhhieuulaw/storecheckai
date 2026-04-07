@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -37,13 +36,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  // Suppress source map upload warnings when SENTRY_AUTH_TOKEN is not set
-  silent: !process.env.SENTRY_AUTH_TOKEN,
+// Only wrap with Sentry if DSN is configured (avoid build issues when Sentry is not set up)
+let finalConfig: NextConfig = nextConfig;
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { withSentryConfig } = require("@sentry/nextjs");
+    finalConfig = withSentryConfig(nextConfig, {
+      silent: !process.env.SENTRY_AUTH_TOKEN,
+      widenClientFileUpload: true,
+      telemetry: false,
+    });
+  } catch { /* Sentry not available — use plain config */ }
+}
 
-  // Upload source maps for better error traces in production
-  widenClientFileUpload: true,
-
-  // Disable Sentry telemetry
-  telemetry: false,
-});
+export default finalConfig;
