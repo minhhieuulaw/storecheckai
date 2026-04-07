@@ -94,8 +94,8 @@ export function SocialProofPopup() {
     });
     setCounter(c => c + 1);
 
-    // Auto-hide after 4s
-    setTimeout(() => setPopup(null), 4000);
+    // Auto-hide after 5s
+    setTimeout(() => setPopup(null), 5000);
   }, [counter]);
 
   useEffect(() => {
@@ -166,7 +166,7 @@ export function SocialProofPopup() {
                 style={{ background: cfg.accent, opacity: 0.3 }}
                 initial={{ scaleX: 1 }}
                 animate={{ scaleX: 0 }}
-                transition={{ duration: 4, ease: "linear" }}
+                transition={{ duration: 5, ease: "linear" }}
               />
             </motion.div>
           );
