@@ -182,20 +182,27 @@ export default function SupportPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1.5">Subject</label>
-            <input
-              type="text"
+            <select
               value={subject}
               onChange={e => setSubject(e.target.value)}
-              maxLength={200}
-              placeholder="What do you need help with?"
-              className="w-full rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition-all"
+              className="w-full rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-all appearance-none cursor-pointer"
               style={{
                 background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.1)",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 5.646a.5.5 0 0 1 .708 0L8 8.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 14px center",
               }}
               onFocus={e => (e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)")}
-              onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-            />
+              onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}>
+              <option value="" disabled className="bg-gray-900 text-gray-500">Select a category...</option>
+              <option value="Technical Issue" className="bg-gray-900">Technical Issue</option>
+              <option value="Billing & Payment" className="bg-gray-900">Billing & Payment</option>
+              <option value="Feature Request" className="bg-gray-900">Feature Request</option>
+              <option value="Account & Security" className="bg-gray-900">Account & Security</option>
+              <option value="Report Inaccuracy" className="bg-gray-900">Report Inaccuracy</option>
+              <option value="Other" className="bg-gray-900">Other</option>
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1.5">Message</label>
