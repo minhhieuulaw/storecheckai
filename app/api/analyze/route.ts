@@ -214,7 +214,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       checksRemaining: remaining,
     });
   } catch (err) {
-    console.error("Analyze error:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errStack = err instanceof Error ? err.stack : undefined;
+    console.error("Analyze error:", { message: errMsg, stack: errStack });
     if (checkConsumed && refundUserId) {
       await addChecks(refundUserId, 1).catch(() => {});
     }
