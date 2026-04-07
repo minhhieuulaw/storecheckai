@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { neon } from "@neondatabase/serverless";
 
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET ?? "fallback-secret-change-me");
+function getProxySecret(): Uint8Array {
+  const s = process.env.AUTH_SECRET;
+  if (!s) throw new Error("AUTH_SECRET environment variable is not set");
+  return new TextEncoder().encode(s);
+}
 
 // Routes that don't require auth
 const PUBLIC_PREFIXES = [
@@ -78,7 +82,7 @@ export async function proxy(req: NextRequest) {
         let isAdmin = false;
         if (token) {
           try {
-            const { payload } = await jwtVerify(token, SECRET);
+            const { payload } = await jwtVerify(token, getProxySecret());
             const adminEmail = process.env.ADMIN_EMAIL ?? "";
             if (adminEmail && (payload as { email?: string }).email?.toLowerCase() === adminEmail.toLowerCase()) {
               isAdmin = true;
@@ -101,7 +105,7 @@ export async function proxy(req: NextRequest) {
   const token = req.cookies.get("session")?.value;
   if (token) {
     try {
-      const { payload } = await jwtVerify(token, SECRET);
+      const { payload } = await jwtVerify(token, getProxySecret());
       if (!payload.sub) throw new Error("legacy token");
       return NextResponse.next();
     } catch {

@@ -7,6 +7,17 @@ import OpenAI from "openai";
 
 const UA ="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+// ── Simple in-memory rate limiter (per process instance) ──────────────────────
+const rl = new Map<string, { count: number; resetAt: number }>();
+function rateLimit(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = rl.get(key);
+  if (!entry || now > entry.resetAt) { rl.set(key, { count: 1, resetAt: now + windowMs }); return true; }
+  if (entry.count >= max) return false;
+  entry.count++;
+  return true;
+}
+
 const US_HEADERS = {
   "User-Agent": UA,
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -139,6 +150,12 @@ async function fetchFBMeta(handle: string): Promise<FBMeta> {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 5 requests per minute per IP (each request costs OpenAI credits)
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!rateLimit(ip, 5, 60_000)) {
+    return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+  }
+
   try {
     const body = await req.json() as {
       fbUrl: string;

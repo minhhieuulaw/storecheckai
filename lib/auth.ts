@@ -28,6 +28,7 @@ export interface User {
   stripeSubscriptionId: string | null;
   createdAt: string;
   isBanned: boolean;
+  role: string;                   // 'user' | 'admin'
   emailVerified: boolean;         // null legacy rows treated as true
   registrationIp: string | null;
 }
@@ -50,6 +51,7 @@ function rowToUser(r: UserRow): User {
     stripeSubscriptionId: r.stripeSubscriptionId ?? null,
     createdAt: r.createdAt,
     isBanned: r.isBanned ?? false,
+    role: r.role ?? "user",
     emailVerified: r.emailVerified ?? true,  // null = legacy user, treat as verified
     registrationIp: r.registrationIp ?? null,
   };

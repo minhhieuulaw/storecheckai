@@ -12,9 +12,10 @@
     "db:migrate": "npx tsx scripts/migrate-to-db.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
+    "@anthropic-ai/sdk": "^0.85.0",
     "@aws-sdk/client-s3": "^3.1017.0",
     "@neondatabase/serverless": "^1.0.2",
+    "@sentry/nextjs": "^10.47.0",
     "@stripe/react-stripe-js": "^5.6.1",
     "@stripe/stripe-js": "^8.11.0",
     "@vercel/og": "^0.11.1",

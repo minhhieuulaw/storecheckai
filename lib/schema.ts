@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   stripeSubscriptionId:  text("stripe_subscription_id"),
   createdAt:             text("created_at").notNull(),
   isBanned:              boolean("is_banned").default(false).notNull(),
+  role:                  text("role").default("user").notNull(),  // 'user' | 'admin'
   // Email verification
   emailVerified:         boolean("email_verified"),                     // null = legacy user (treat as verified)
   emailVerifyToken:      text("email_verify_token"),

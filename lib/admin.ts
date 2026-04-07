@@ -1,4 +1,4 @@
-import { sql, eq, desc, count, and } from "drizzle-orm";
+import { sql, eq, desc, count } from "drizzle-orm";
 import { db } from "./db";
 import { users, reports, settings } from "./schema";
 import type { SessionPayload } from "./auth";
@@ -13,6 +13,17 @@ export function isAdminEmail(email: string): boolean {
   return adminEmail.length > 0 && email.toLowerCase() === adminEmail.toLowerCase();
 }
 
+/** Check if user has admin privileges (role-based, with email fallback for legacy) */
+export async function isAdmin(userId: string): Promise<boolean> {
+  const user = await db.select({ role: users.role, email: users.email })
+    .from(users).where(eq(users.id, userId)).limit(1);
+  if (!user[0]) return false;
+  // Primary: role-based check
+  if (user[0].role === "admin") return true;
+  // Fallback: email-based check (for legacy users before role column migration)
+  return isAdminEmail(user[0].email);
+}
+
 export async function requireAdminSession(req?: NextRequest): Promise<SessionPayload> {
   // Prefer req.cookies (Route Handler context) over next/headers cookies() (Server Component context)
   const token = req
@@ -20,8 +31,10 @@ export async function requireAdminSession(req?: NextRequest): Promise<SessionPay
     : (await cookies()).get("session")?.value;
   if (!token) throw new Error("UNAUTHORIZED");
   const session = await verifySession(token);
-  if (!session?.email) throw new Error("UNAUTHORIZED");
-  if (!isAdminEmail(session.email)) throw new Error("FORBIDDEN");
+  if (!session?.sub || !session?.email) throw new Error("UNAUTHORIZED");
+  // Role-based check with email fallback
+  const hasAdminAccess = await isAdmin(session.sub);
+  if (!hasAdminAccess) throw new Error("FORBIDDEN");
   return session;
 }
 
