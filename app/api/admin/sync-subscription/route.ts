@@ -4,18 +4,16 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, STRIPE_PLANS, type StripePlanKey } from "@/lib/stripe";
 import { applyPlan } from "@/lib/quota";
+import { requireAdminSession } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { users } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 
-// One-time admin helper — sync a Stripe subscription to the DB
+// Admin-only helper — sync a Stripe subscription to the DB
 // POST /api/admin/sync-subscription  { subscriptionId: "sub_xxx" }
 export async function POST(req: NextRequest) {
-  // Basic security: only allow from localhost
-  const host = req.headers.get("host") ?? "";
-  if (!host.startsWith("localhost") && !host.startsWith("127.0.0.1")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  try { await requireAdminSession(req); }
+  catch { return NextResponse.json({ error: "Forbidden" }, { status: 403 }); }
 
   try {
     const { subscriptionId } = await req.json() as { subscriptionId?: string };

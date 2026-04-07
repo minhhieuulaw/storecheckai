@@ -5,13 +5,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySession, findUserById, updateUser } from "@/lib/auth";
 import { stripe, STRIPE_PLANS, type StripePlanKey } from "@/lib/stripe";
 
-// GET — success page fetches plan from completed session
+// GET — success page fetches plan from completed session (requires auth)
 export async function GET(req: NextRequest) {
+  const token = req.cookies.get("session")?.value;
+  const userSession = token ? await verifySession(token) : null;
+  if (!userSession?.sub) return NextResponse.json({ plan: null }, { status: 401 });
+
   const sessionId = req.nextUrl.searchParams.get("session_id");
   if (!sessionId) return NextResponse.json({ plan: null });
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    return NextResponse.json({ plan: session.metadata?.plan ?? null });
+    const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+    // Only return plan if checkout belongs to authenticated user
+    if (checkoutSession.metadata?.userId !== userSession.sub) return NextResponse.json({ plan: null });
+    return NextResponse.json({ plan: checkoutSession.metadata?.plan ?? null });
   } catch {
     return NextResponse.json({ plan: null });
   }

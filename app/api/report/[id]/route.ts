@@ -10,5 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!report) {
     return NextResponse.json({ error: "Report not found or expired." }, { status: 404 });
   }
-  return NextResponse.json(report);
+  // Strip internal userId from public response to prevent information disclosure
+  const { userId: _uid, ...publicReport } = report;
+  return NextResponse.json(publicReport);
 }
