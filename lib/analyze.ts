@@ -220,41 +220,47 @@ export async function analyzeProductPrices(products: ScrapedProduct[]): Promise<
               text: `Product listed as "${product.name}" on an online store.
 Store price: ${priceLabel}
 
-Identify the product from the image and return a price assessment for a US shopper.
+Identify the EXACT product from the image and return a price assessment for a US shopper.
 
 Return ONLY this JSON (no markdown):
 {
   "isPhysicalProduct": true,
-  "identifiedAs": "specific product type you see in the image",
-  "amazonPrice": "typical retail price range on Amazon USA, e.g. $20-35, or null if unknown",
-  "aliexpressPrice": "typical wholesale/dropship price on AliExpress, e.g. $4-8, or null if unknown",
-  "temuPrice": "typical price range on Temu, e.g. $3-7, or null if unknown",
-  "markupNote": "markup ratio vs Amazon retail if store price is clearly above it, e.g. '~2x Amazon price', or null",
+  "identifiedAs": "specific product type/brand/model you see in the image",
+  "exactMatch": true or false,
+  "amazonPrice": "typical retail price range on Amazon USA for THIS EXACT product or very similar model, e.g. $20-35, or null if unknown",
+  "aliexpressPrice": "typical wholesale/dropship price on AliExpress for similar items, e.g. $4-8, or null if unknown",
+  "markupNote": "markup ratio vs Amazon ONLY if exactMatch is true, e.g. '~2x Amazon price', or null",
   "priceVerdict": "cheap" | "fair" | "overpriced" | "marked_up",
-  "explanation": "one direct sentence comparing the store price to Amazon retail (primary) and AliExpress/Temu wholesale (reference)"
+  "explanation": "one direct sentence — if exactMatch, compare prices directly. If NOT exactMatch, say 'Similar products on Amazon cost $X-Y, but this may be a different model/brand.'"
 }
 
-IMPORTANT: Set "isPhysicalProduct" to false if this is clearly a shipping upgrade, expedited delivery, priority processing, protection plan, warranty, insurance, gift wrap, or any non-purchasable service — not a physical product.
+CRITICAL RULES FOR exactMatch:
+- Set "exactMatch" to TRUE only if you can confidently identify the SAME product (same brand, model, specs) available on Amazon.
+- Set "exactMatch" to FALSE if you can only find SIMILAR products but not the exact same one.
+- When exactMatch is FALSE: do NOT set markupNote (set to null). The explanation MUST clarify that the comparison is with similar products, not the exact same item.
+- When exactMatch is FALSE: priceVerdict should reflect the general market range, but phrase it cautiously.
+
+IMPORTANT: Set "isPhysicalProduct" to false if this is clearly a shipping upgrade, expedited delivery, priority processing, protection plan, warranty, insurance, gift wrap, or any non-purchasable service.
 
 Verdict rules:
-- "cheap"     = store price is below typical Amazon retail (genuinely good deal)
-- "fair"      = store price is within normal Amazon retail range
-- "overpriced"= store price is 30–100% above Amazon retail
-- "marked_up" = store price is 2x or more above Amazon retail (extreme markup)
-- If image is unclear, base on product name only`,
+- "cheap"     = store price is below typical Amazon retail for same/similar product
+- "fair"      = store price is within normal Amazon retail range for same/similar product
+- "overpriced"= store price is 30–100% above Amazon retail (only confident if exactMatch)
+- "marked_up" = store price is 2x+ above Amazon retail (ONLY use when exactMatch is true)
+- If NOT exactMatch but store price seems high compared to similar products, use "overpriced" with cautious explanation`,
             },
           ],
         }],
-        max_tokens: 280,
+        max_tokens: 350,
         response_format: { type: "json_object" },
       });
 
       const raw = JSON.parse(response.choices[0]?.message?.content || "{}") as {
         isPhysicalProduct?: boolean;
         identifiedAs?: string;
+        exactMatch?: boolean;
         amazonPrice?: string | null;
         aliexpressPrice?: string | null;
-        temuPrice?: string | null;
         markupNote?: string | null;
         priceVerdict?: string;
         explanation?: string;
@@ -263,20 +269,29 @@ Verdict rules:
       // Skip shipping upsells / service items identified by GPT
       if (raw.isPhysicalProduct === false) return null;
 
+      const isExact = raw.exactMatch === true;
       const validVerdicts: PriceAnalysis["priceVerdict"][] = ["fair", "cheap", "overpriced", "marked_up"];
-      const verdict = validVerdicts.includes(raw.priceVerdict as PriceAnalysis["priceVerdict"])
+      let verdict = validVerdicts.includes(raw.priceVerdict as PriceAnalysis["priceVerdict"])
         ? raw.priceVerdict as PriceAnalysis["priceVerdict"]
         : "fair";
 
+      // Don't allow "marked_up" verdict when product isn't an exact match
+      if (!isExact && verdict === "marked_up") verdict = "overpriced";
+
       const searchTerm = encodeURIComponent(raw.identifiedAs || product.name);
+      const imageSearchUrl = product.image
+        ? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.image)}`
+        : `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`;
+
       return {
         productName: product.name,
         storePrice: product.priceUsd != null ? `$${product.priceUsd}` : (product.price ?? "Unknown"),
         identifiedAs: raw.identifiedAs || product.name,
+        exactMatch: isExact,
         estimatedMarketPrice: raw.amazonPrice || "Unknown",
         aliexpressPrice: raw.aliexpressPrice || null,
-        temuPrice: raw.temuPrice || null,
-        markupNote: raw.markupNote || null,
+        // Only show markup note for exact matches
+        markupNote: isExact ? (raw.markupNote || null) : null,
         priceVerdict: verdict,
         explanation: raw.explanation || "",
         imageUrl: product.image,
@@ -284,8 +299,10 @@ Verdict rules:
           ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}`
           : null,
         amazonSearchUrl: `https://www.amazon.com/s?k=${searchTerm}`,
-        aliexpressSearchUrl: `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`,
-        temuSearchUrl: `https://www.temu.com/search_result.html?search_key=${searchTerm}`,
+        // AliExpress: search by image via Google Lens redirect (more accurate than keyword)
+        aliexpressSearchUrl: product.image
+          ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}&hl=en`
+          : `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`,
       };
     })
   );

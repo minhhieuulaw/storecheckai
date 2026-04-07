@@ -15,17 +15,16 @@ export interface PriceAnalysis {
   productName: string;
   storePrice: string;
   identifiedAs: string;
+  exactMatch: boolean;           // true = same product found, false = similar/comparable product
   estimatedMarketPrice: string;  // Amazon retail range (primary reference)
   aliexpressPrice: string | null; // AliExpress wholesale/dropship range
-  temuPrice: string | null;      // Temu price range reference
-  markupNote: string | null;     // e.g. "~2x Amazon price"
+  markupNote: string | null;     // e.g. "~2x Amazon price" (only when exactMatch)
   priceVerdict: PriceVerdict;
   explanation: string;
   imageUrl: string | null;
   googleLensUrl: string | null;
   amazonSearchUrl: string;
-  aliexpressSearchUrl: string;
-  temuSearchUrl: string;
+  aliexpressSearchUrl: string;   // image-based search URL
 }
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 export type SignalStatus = "pass" | "warn" | "fail" | "unknown";

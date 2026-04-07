@@ -187,10 +187,10 @@ function getShippingPill(signals: string[]) {
   return { text: "Shipping Unknown", color: "#6b7280" };
 }
 
-function priceVerdictConfig(v: PriceVerdict) {
+function priceVerdictConfig(v: PriceVerdict, exactMatch?: boolean) {
   if (v === "cheap")      return { label: "Good Deal",   color: "#4ade80", bg: "rgba(34,197,94,0.12)"  };
   if (v === "fair")       return { label: "Fair Price",  color: "#38bdf8", bg: "rgba(56,189,248,0.12)" };
-  if (v === "overpriced") return { label: "Overpriced",  color: "#fbbf24", bg: "rgba(234,179,8,0.12)"  };
+  if (v === "overpriced") return { label: exactMatch ? "Overpriced" : "Cheaper Alternatives", color: "#fbbf24", bg: "rgba(234,179,8,0.12)" };
   return                         { label: "High Markup", color: "#f87171", bg: "rgba(239,68,68,0.12)"  };
 }
 
@@ -767,7 +767,7 @@ export default function ReportPage() {
         )}
 
         {/* ── PRICE CHECK ─────────────────────────────────────────────────── */}
-        {isBasicPlan && <LockedSection label="Price Comparison (Amazon · AliExpress · Temu)" />}
+        {isBasicPlan && <LockedSection label="Price Comparison (Amazon · AliExpress)" />}
         {!isBasicPlan && (report.priceAnalysis ?? []).length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -779,7 +779,8 @@ export default function ReportPage() {
 
             <div className="space-y-3">
               {(report.priceAnalysis ?? []).map((item, i) => {
-                const pvc     = priceVerdictConfig(item.priceVerdict);
+                const isExact = (item as unknown as { exactMatch?: boolean }).exactMatch !== false;
+                const pvc     = priceVerdictConfig(item.priceVerdict, isExact);
                 const product = (report.products ?? []).find(p => p.name === item.productName);
                 return (
                   <motion.div
@@ -809,7 +810,12 @@ export default function ReportPage() {
                       <div className="flex-1 min-w-0">
                         {/* Name + badge */}
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <p className="text-sm font-semibold text-gray-200 leading-tight">{item.identifiedAs}</p>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-200 leading-tight">{item.identifiedAs}</p>
+                            {!isExact && (
+                              <p className="text-[10px] text-gray-500 mt-0.5">Compared with similar products — not an exact match</p>
+                            )}
+                          </div>
                           <span
                             className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
                             style={{ background: pvc.bg, color: pvc.color }}>
@@ -823,19 +829,17 @@ export default function ReportPage() {
                             <span className="text-sm font-bold text-gray-100">{item.storePrice}</span>
                           </div>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">Amazon</span>
+                            <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">
+                              {isExact ? "Amazon" : "Amazon (similar)"}
+                            </span>
                             <span className="text-sm font-semibold" style={{ color: pvc.color }}>{item.estimatedMarketPrice}</span>
                           </div>
                           {item.aliexpressPrice && (
                             <div className="flex items-baseline gap-1">
-                              <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">AliExpress</span>
+                              <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">
+                                {isExact ? "AliExpress" : "AliExpress (similar)"}
+                              </span>
                               <span className="text-sm font-semibold text-gray-500">{item.aliexpressPrice}</span>
-                            </div>
-                          )}
-                          {item.temuPrice && (
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">Temu</span>
-                              <span className="text-sm font-semibold text-gray-500">{item.temuPrice}</span>
                             </div>
                           )}
                         </div>
@@ -866,13 +870,6 @@ export default function ReportPage() {
                             style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.14)", color: "#f87171" }}>
                             AliExpress <ExternalLink className="h-2.5 w-2.5" />
                           </a>
-                          {item.temuSearchUrl && (
-                            <a href={item.temuSearchUrl} target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all hover:opacity-80 active:scale-95"
-                              style={{ background: "rgba(255,90,0,0.07)", border: "1px solid rgba(255,90,0,0.16)", color: "#fb923c" }}>
-                              Temu <ExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          )}
                         </div>
                       </div>
                     </div>
