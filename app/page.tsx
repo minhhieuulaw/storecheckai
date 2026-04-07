@@ -7,11 +7,13 @@ import { SampleReport } from "@/components/SampleReport";
 import { Pricing } from "@/components/Pricing";
 import { FAQ } from "@/components/FAQ";
 import { Footer } from "@/components/Footer";
+import { SocialProofPopup } from "@/components/SocialProofPopup";
 
 export default function Home() {
   return (
     <>
       <Navbar />
+      <SocialProofPopup />
       <main>
         <Hero />
         <ThreatHook />
