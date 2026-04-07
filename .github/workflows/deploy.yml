@@ -31,6 +31,7 @@ jobs:
     name: Run database migrations
     runs-on: ubuntu-latest
     needs: security-audit
+    if: ${{ vars.DATABASE_URL != '' || secrets.DATABASE_URL != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,6 +47,7 @@ jobs:
     name: Build Docker image
     runs-on: ubuntu-latest
     needs: [security-audit, migrate]
+    if: ${{ !cancelled() && needs.security-audit.result == 'success' && needs.migrate.result != 'failure' }}
     permissions:
       contents: read
       packages: write
