@@ -22,6 +22,9 @@ const PUBLIC_PREFIXES = [
   "/api/og",       // OG image generation — public
   "/api/health",   // health check — must be public for Docker healthcheck
   "/pricing",      // public pricing page
+  "/privacy",      // privacy policy
+  "/terms",        // terms of service
+  "/contact",      // contact page
   "/checkout",     // success/cancel pages
   "/report",       // shareable public report pages
   "/_next",

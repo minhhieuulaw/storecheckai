@@ -24,9 +24,9 @@ export function Footer() {
 
         {/* Links */}
         <div className="flex gap-6 text-sm text-gray-600">
-          <a href="#" className="hover:text-gray-300 transition-colors">{t.footer.privacy}</a>
-          <a href="#" className="hover:text-gray-300 transition-colors">{t.footer.terms}</a>
-          <a href="#" className="hover:text-gray-300 transition-colors">{t.footer.contact}</a>
+          <a href="/privacy" className="hover:text-gray-300 transition-colors">{t.footer.privacy}</a>
+          <a href="/terms" className="hover:text-gray-300 transition-colors">{t.footer.terms}</a>
+          <a href="/contact" className="hover:text-gray-300 transition-colors">{t.footer.contact}</a>
         </div>
 
         <p className="text-xs text-gray-700">
