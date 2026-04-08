@@ -31,6 +31,14 @@ const SAMPLE = {
     "Shipping took forever but the item eventually arrived. Quality is okay for the price.",
     "Amazing Customer Service, helped me with my refund immediately!",
   ],
+  tpGoodReviews: [
+    { author: "Sarah M.", rating: 5, date: "2026-03-15", content: "Amazing Customer Service, helped me with my refund immediately! Product quality was better than expected." },
+    { author: "Mike R.", rating: 4, date: "2026-03-02", content: "Shipping took forever but the item eventually arrived. Quality is okay for the price." },
+  ],
+  tpBadReviews: [
+    { author: "Jane D.", rating: 1, date: "2026-03-20", content: "Ordered 3 weeks ago and still waiting. Support never replied to my emails. Total nightmare." },
+    { author: "Tom K.", rating: 2, date: "2026-02-28", content: "Product looks completely different from the photos. Cheap plastic, not what I expected at all." },
+  ],
   pros: [
     "HTTPS encryption active — your payment data is protected",
     "Accepts PayPal and major credit cards",
@@ -320,14 +328,64 @@ export function SampleReport() {
 
               {/* Reviews + verdict */}
               <div className="border-t px-5 pb-5 pt-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-3">What customers say</p>
-                <div className="space-y-2 mb-4">
-                  {SAMPLE.tpReviews.map((rev, i) => (
-                    <div key={i} className="rounded-xl px-3.5 py-2.5"
-                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                      <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev}&rdquo;</p>
+                <div className="space-y-4 mb-4">
+                  {SAMPLE.tpGoodReviews.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#4ade80" }}>
+                        Positive reviews ({SAMPLE.tpGoodReviews.length})
+                      </p>
+                      <div className="space-y-2">
+                        {SAMPLE.tpGoodReviews.map((rev, i) => (
+                          <div key={i} className="rounded-xl px-3.5 py-3"
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-px">
+                                  {[1, 2, 3, 4, 5].map(s => (
+                                    <Star key={s} className="h-2.5 w-2.5"
+                                      style={{ color: s <= rev.rating ? "#00b67a" : "rgba(255,255,255,0.1)", fill: s <= rev.rating ? "#00b67a" : "transparent" }} />
+                                  ))}
+                                </div>
+                                <span className="text-[11px] font-medium text-gray-300">{rev.author}</span>
+                              </div>
+                              <span className="text-[10px] text-gray-600">{rev.date}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev.content}&rdquo;</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  )}
+                  {SAMPLE.tpBadReviews.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>
+                        Negative reviews ({SAMPLE.tpBadReviews.length})
+                      </p>
+                      <div className="space-y-2">
+                        {SAMPLE.tpBadReviews.map((rev, i) => (
+                          <div key={i} className="rounded-xl px-3.5 py-3"
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-px">
+                                  {[1, 2, 3, 4, 5].map(s => {
+                                    const c = rev.rating >= 2 ? "#f97316" : "#ef4444";
+                                    return (
+                                      <Star key={s} className="h-2.5 w-2.5"
+                                        style={{ color: s <= rev.rating ? c : "rgba(255,255,255,0.1)", fill: s <= rev.rating ? c : "transparent" }} />
+                                    );
+                                  })}
+                                </div>
+                                <span className="text-[11px] font-medium text-gray-300">{rev.author}</span>
+                              </div>
+                              <span className="text-[10px] text-gray-600">{rev.date}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev.content}&rdquo;</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${tpVBorder}` }}>
                   <div className="px-3.5 py-2 flex items-center gap-2" style={{ background: tpVBg }}>

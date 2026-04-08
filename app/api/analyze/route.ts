@@ -201,6 +201,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       trustpilotRating:     planFeatures.fullReport ? scraped.trustpilotRating      : null,
       trustpilotReviewCount: planFeatures.fullReport ? scraped.trustpilotReviewCount : null,
       trustpilotReviews:    planFeatures.fullReport ? (ai.translatedReviews?.length ? ai.translatedReviews : scraped.trustpilotReviews) : [],
+      trustpilotGoodReviews: planFeatures.fullReport ? scraped.trustpilotGoodReviews : [],
+      trustpilotBadReviews:  planFeatures.fullReport ? scraped.trustpilotBadReviews  : [],
       manipulationTactics:  scraped.manipulationTactics,  // always shown — safety-critical info
       reviewPlatforms:      planFeatures.fullReport ? scraped.reviewPlatforms       : [],
 

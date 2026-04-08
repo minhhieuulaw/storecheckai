@@ -26,6 +26,13 @@ export interface PriceAnalysis {
   amazonSearchUrl: string;
   aliexpressSearchUrl: string;   // image-based search URL
 }
+export interface TrustpilotReview {
+  author: string;
+  rating: number;        // 1-5
+  date: string;          // ISO date or "Unknown"
+  content: string;       // review text (max 300 chars)
+}
+
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 export type SignalStatus = "pass" | "warn" | "fail" | "unknown";
 export type ReviewConfidence = "LOW" | "MODERATE" | "HIGH" | "UNKNOWN";
@@ -81,7 +88,9 @@ export interface ScrapedData {
   // Tier 2 additions
   trustpilotRating: number | null;
   trustpilotReviewCount: number | null;
-  trustpilotReviews: string[];          // top review snippets (max 5)
+  trustpilotReviews: string[];          // legacy: flat snippets (kept for backward compat)
+  trustpilotGoodReviews: TrustpilotReview[];  // 4-5 star reviews (max 5)
+  trustpilotBadReviews: TrustpilotReview[];   // 1-3 star reviews (max 5)
   manipulationTactics: string[];
   hasCookieConsent: boolean;
   hasBusinessRegistration: boolean;
@@ -129,7 +138,9 @@ export interface Report {
   shippingOriginSignals: string[];
   trustpilotRating: number | null;
   trustpilotReviewCount: number | null;
-  trustpilotReviews: string[];
+  trustpilotReviews: string[];            // legacy flat snippets
+  trustpilotGoodReviews?: TrustpilotReview[];
+  trustpilotBadReviews?: TrustpilotReview[];
   manipulationTactics: string[];
   reviewPlatforms: string[];
 

@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { ScrapedData, SecurityHeaders, ScrapedProduct } from "./types";
+import type { ScrapedData, SecurityHeaders, ScrapedProduct, TrustpilotReview } from "./types";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const TIMEOUT = 12000;
@@ -137,7 +137,31 @@ async function checkHeadRequest(url: string): Promise<HeadResult> {
   }
 }
 
-async function getTrustpilotData(domain: string): Promise<{ rating: number | null; reviewCount: number | null; reviews: string[] }> {
+interface TrustpilotResult {
+  rating: number | null;
+  reviewCount: number | null;
+  reviews: string[];                    // legacy flat snippets
+  goodReviews: TrustpilotReview[];      // 4-5 stars
+  badReviews: TrustpilotReview[];       // 1-3 stars
+}
+
+function parseTpReview(node: Record<string, unknown>): TrustpilotReview | null {
+  const body = String(node.reviewBody ?? node.text ?? node.content ?? "").trim();
+  if (body.length < 20) return null;
+  const ratingObj = node.reviewRating as Record<string, unknown> | undefined;
+  const rating = ratingObj?.ratingValue
+    ? parseFloat(String(ratingObj.ratingValue))
+    : (typeof node.stars === "number" ? node.stars : typeof node.rating === "number" ? node.rating : null);
+  const authorObj = node.author as Record<string, unknown> | undefined;
+  const author = String(authorObj?.name ?? node.consumer?.toString() ?? "Anonymous").trim();
+  const dateRaw = String(node.datePublished ?? node.createdAt ?? node.dates?.toString() ?? "");
+  const date = dateRaw ? dateRaw.slice(0, 10) : "Unknown";
+  return { author: author.slice(0, 60), rating: rating ?? 0, date, content: body.slice(0, 300) };
+}
+
+async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
+  const empty: TrustpilotResult = { rating: null, reviewCount: null, reviews: [], goodReviews: [], badReviews: [] };
+
   // Try both registrable domain and full domain
   const parts = domain.split(".");
   const registrable = parts.length >= 2 ? parts.slice(-2).join(".") : domain;
@@ -145,83 +169,132 @@ async function getTrustpilotData(domain: string): Promise<{ rating: number | nul
 
   for (const candidate of candidates) {
     try {
-      const html = await fetchPage(`https://www.trustpilot.com/review/${candidate}`);
-      if (!html) continue;
+      // Fetch main page + bad reviews page (filtered to 1-star) in parallel
+      const [mainHtml, badHtml] = await Promise.all([
+        fetchPage(`https://www.trustpilot.com/review/${candidate}`),
+        fetchPage(`https://www.trustpilot.com/review/${candidate}?stars=1&stars=2&stars=3`),
+      ]);
+      if (!mainHtml) continue;
 
-      const $ = cheerio.load(html);
       let rating: number | null = null;
       let reviewCount: number | null = null;
-      const reviews: string[] = [];
+      const allReviews: TrustpilotReview[] = [];
+      const legacySnippets: string[] = [];
 
-      // Method 1: JSON-LD aggregateRating + Review snippets
-      $('script[type="application/ld+json"]').each((_, el) => {
-        try {
-          const json = JSON.parse($(el).html() || "{}");
-          const entries = Array.isArray(json) ? json : [json];
-          for (const entry of entries) {
-            const e = entry as Record<string, unknown>;
-            const ar = (e.aggregateRating ?? (e["@graph"] as Record<string, unknown>[])?.[0]?.aggregateRating) as Record<string, unknown> | undefined;
-            if (ar?.ratingValue) {
-              rating = parseFloat(String(ar.ratingValue));
-              reviewCount = parseInt(String(ar.reviewCount ?? ar.ratingCount ?? "0"), 10) || null;
-            }
-            // Extract individual review bodies
-            if (e["@type"] === "Review" && e.reviewBody) {
-              const text = String(e.reviewBody).trim();
-              if (text.length > 20 && reviews.length < 5) reviews.push(text.slice(0, 300));
-            }
-            // @graph array may contain Reviews
-            if (Array.isArray(e["@graph"])) {
-              for (const node of e["@graph"] as Record<string, unknown>[]) {
-                if (node["@type"] === "Review" && node.reviewBody) {
-                  const text = String(node.reviewBody).trim();
-                  if (text.length > 20 && reviews.length < 5) reviews.push(text.slice(0, 300));
+      // ── Helper: extract reviews from HTML ──
+      function extractFromHtml(html: string, into: TrustpilotReview[]) {
+        const $ = cheerio.load(html);
+
+        // JSON-LD
+        $('script[type="application/ld+json"]').each((_, el) => {
+          try {
+            const json = JSON.parse($(el).html() || "{}");
+            const entries = Array.isArray(json) ? json : [json];
+            for (const entry of entries) {
+              const e = entry as Record<string, unknown>;
+              // aggregateRating
+              const ar = (e.aggregateRating ?? (e["@graph"] as Record<string, unknown>[])?.[0]?.aggregateRating) as Record<string, unknown> | undefined;
+              if (ar?.ratingValue && rating === null) {
+                rating = parseFloat(String(ar.ratingValue));
+                reviewCount = parseInt(String(ar.reviewCount ?? ar.ratingCount ?? "0"), 10) || null;
+              }
+              // Individual Review
+              if (e["@type"] === "Review") {
+                const r = parseTpReview(e);
+                if (r) into.push(r);
+              }
+              // @graph array
+              if (Array.isArray(e["@graph"])) {
+                for (const node of e["@graph"] as Record<string, unknown>[]) {
+                  if (node["@type"] === "Review") {
+                    const r = parseTpReview(node);
+                    if (r) into.push(r);
+                  }
                 }
               }
             }
-          }
-        } catch { /* ignore */ }
-      });
+          } catch { /* ignore */ }
+        });
 
-      // Method 2: __NEXT_DATA__ (Trustpilot Next.js app)
-      const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-      if (nextDataMatch) {
-        try {
-          const nextData = JSON.parse(nextDataMatch[1]) as Record<string, unknown>;
-          const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown>;
-          // Rating from businessUnit
-          if (rating === null) {
-            const bu = pageProps?.businessUnit as Record<string, unknown> | undefined;
-            if (bu?.stars) {
-              rating = parseFloat(String(bu.stars));
-              reviewCount = parseInt(String(bu.numberOfReviews ?? "0"), 10) || null;
+        // __NEXT_DATA__
+        const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+        if (nextDataMatch) {
+          try {
+            const nextData = JSON.parse(nextDataMatch[1]) as Record<string, unknown>;
+            const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown>;
+            if (rating === null) {
+              const bu = pageProps?.businessUnit as Record<string, unknown> | undefined;
+              if (bu?.stars) {
+                rating = parseFloat(String(bu.stars));
+                reviewCount = parseInt(String(bu.numberOfReviews ?? "0"), 10) || null;
+              }
             }
-          }
-          // Reviews array
-          const reviewsData = pageProps?.reviews as Array<Record<string, unknown>> | undefined;
-          if (Array.isArray(reviewsData)) {
-            for (const r of reviewsData) {
-              const text = String(r.text ?? r.content ?? r.reviewBody ?? "").trim();
-              if (text.length > 20 && reviews.length < 5) reviews.push(text.slice(0, 300));
+            const reviewsData = pageProps?.reviews as Array<Record<string, unknown>> | undefined;
+            if (Array.isArray(reviewsData)) {
+              for (const rv of reviewsData) {
+                // __NEXT_DATA__ reviews have nested consumer object
+                const consumer = rv.consumer as Record<string, unknown> | undefined;
+                const authorName = consumer?.displayName ?? consumer?.name ?? "Anonymous";
+                const rObj = rv.reviewRating ?? rv.rating;
+                const starVal = typeof rv.stars === "number" ? rv.stars
+                  : typeof rObj === "object" && rObj !== null ? parseFloat(String((rObj as Record<string, unknown>).ratingValue ?? "0"))
+                  : typeof rv.rating === "number" ? rv.rating : 0;
+                const dateStr = String(rv.dates?.toString() ?? rv.createdAt ?? rv.datePublished ?? "").slice(0, 10);
+                const body = String(rv.text ?? rv.content ?? rv.reviewBody ?? "").trim();
+                if (body.length >= 20) {
+                  into.push({
+                    author: String(authorName).slice(0, 60),
+                    rating: starVal,
+                    date: dateStr || "Unknown",
+                    content: body.slice(0, 300),
+                  });
+                }
+              }
             }
-          }
-        } catch { /* ignore */ }
+          } catch { /* ignore */ }
+        }
       }
 
-      // Method 3: HTML meta/regex fallback for rating
+      // Extract from main page (mostly good reviews on Trustpilot default sort)
+      extractFromHtml(mainHtml, allReviews);
+
+      // Extract from bad-reviews page
+      const badPageReviews: TrustpilotReview[] = [];
+      if (badHtml) extractFromHtml(badHtml, badPageReviews);
+
+      // Regex fallback for rating
       if (rating === null) {
-        const ratingMatch = html.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
-        const countMatch  = html.match(/"reviewCount"\s*:\s*"?(\d+)"?/);
+        const ratingMatch = mainHtml.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+        const countMatch  = mainHtml.match(/"reviewCount"\s*:\s*"?(\d+)"?/);
         if (ratingMatch) {
           rating = parseFloat(ratingMatch[1]);
           if (countMatch) reviewCount = parseInt(countMatch[1], 10) || null;
         }
       }
 
-      if (rating !== null) return { rating, reviewCount, reviews };
+      // Deduplicate by content substring
+      const seen = new Set<string>();
+      function dedup(r: TrustpilotReview): boolean {
+        const key = r.content.slice(0, 80).toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }
+
+      // Combine & categorize
+      const combined = [...allReviews, ...badPageReviews].filter(dedup);
+      const goodReviews = combined.filter(r => r.rating >= 4).slice(0, 5);
+      const badReviews  = combined.filter(r => r.rating > 0 && r.rating <= 3).slice(0, 5);
+
+      // Legacy flat snippets for backward compat
+      for (const r of combined.slice(0, 5)) {
+        legacySnippets.push(r.content);
+      }
+
+      if (rating !== null) return { rating, reviewCount, reviews: legacySnippets, goodReviews, badReviews };
     } catch { /* try next candidate */ }
   }
-  return { rating: null, reviewCount: null, reviews: [] };
+  return empty;
 }
 
 function detectManipulationTactics(html: string): string[] {
@@ -901,7 +974,7 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
       emailDomainMatch: null, hasAboutPage: false, aboutQualityScore: 0,
       securityHeaders: { hsts: false, xFrameOptions: false, csp: false, xContentTypeOptions: false },
       shipsFromUS: null, shippingOriginSignals: [], products: [],
-      trustpilotRating: null, trustpilotReviewCount: null, trustpilotReviews: [],
+      trustpilotRating: null, trustpilotReviewCount: null, trustpilotReviews: [], trustpilotGoodReviews: [], trustpilotBadReviews: [],
       manipulationTactics: [], hasCookieConsent: false, hasBusinessRegistration: false,
       businessEntityType: null, hasSiteReviews: false, reviewPlatforms: [],
       redirectsToNewDomain: false,
@@ -951,6 +1024,8 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
     trustpilotRating: null,
     trustpilotReviewCount: null,
     trustpilotReviews: [],
+    trustpilotGoodReviews: [],
+    trustpilotBadReviews: [],
     manipulationTactics: [],
     hasCookieConsent: false,
     hasBusinessRegistration: false,
@@ -1124,7 +1199,9 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
   base.redirectsToNewDomain = headResult.redirectsToNewDomain;
   base.trustpilotRating = trustpilot.rating;
   base.trustpilotReviewCount = trustpilot.reviewCount;
-  base.trustpilotReviews = trustpilot.reviews;
+  base.trustpilotReviews = trustpilot.reviews;           // legacy flat
+  base.trustpilotGoodReviews = trustpilot.goodReviews;
+  base.trustpilotBadReviews = trustpilot.badReviews;
   base.domainAgeDays = domainAge.ageDays;
   base.domainCreatedAt = domainAge.createdAt;
 

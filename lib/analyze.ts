@@ -61,7 +61,13 @@ export async function analyzeWithAI(data: ScrapedData, trustScore: number, retur
     ? SYSTEM_PROMPT_BASE
     : `${SYSTEM_PROMPT_BASE}\n- IMPORTANT: Write ALL text values in your JSON response in ${language}. This includes verdictReason, returnSummary, pros, cons, complaints, redFlags, suspiciousSignals, whoShouldBuy, whoShouldAvoid, finalTake, and translatedReviews.`;
 
-  const reviewsExist = data.trustpilotReviews && data.trustpilotReviews.length > 0;
+  const goodReviews = data.trustpilotGoodReviews ?? [];
+  const badReviews = data.trustpilotBadReviews ?? [];
+  const hasStructuredReviews = goodReviews.length > 0 || badReviews.length > 0;
+  const reviewsExist = hasStructuredReviews || (data.trustpilotReviews && data.trustpilotReviews.length > 0);
+
+  const formatReview = (r: { author: string; rating: number; date: string; content: string }) =>
+    `[${r.rating}★ by ${r.author}, ${r.date}] "${r.content}"`;
 
   const prompt = `Analyze this online store for a US shopper and return JSON.
 
@@ -89,7 +95,7 @@ STORE DATA:
 - Social links: ${data.socialLinks.length > 0 ? data.socialLinks.join(", ") : "None"}
 - Domain age: ${data.domainAgeDays !== null ? `${data.domainAgeDays} days (${(data.domainAgeDays / 365).toFixed(1)} years)` : "Unknown"}
 - Trustpilot: ${data.trustpilotRating !== null ? `${data.trustpilotRating.toFixed(1)}/5 (${data.trustpilotReviewCount ?? 0} reviews)` : "Not found"}
-${reviewsExist ? `- Trustpilot review snippets:\n${data.trustpilotReviews!.slice(0, 4).map((r, i) => `  ${i + 1}. "${r}"`).join("\n")}` : ""}
+${hasStructuredReviews ? `- POSITIVE reviews (4-5★):\n${goodReviews.slice(0, 5).map((r, i) => `  ${i + 1}. ${formatReview(r)}`).join("\n")}\n- NEGATIVE reviews (1-3★):\n${badReviews.slice(0, 5).map((r, i) => `  ${i + 1}. ${formatReview(r)}`).join("\n")}` : reviewsExist ? `- Trustpilot review snippets:\n${data.trustpilotReviews!.slice(0, 4).map((r, i) => `  ${i + 1}. "${r}"`).join("\n")}` : ""}
 - Business registration: ${data.hasBusinessRegistration ? `Yes (${data.businessEntityType})` : "No"}
 - On-site review platform: ${data.hasSiteReviews ? data.reviewPlatforms.join(", ") : "None"}
 - Cookie consent: ${data.hasCookieConsent ? "Yes" : "No"}
@@ -115,7 +121,7 @@ Return ONLY this JSON (no markdown, no explanation):
   "pros": ["pro1", "pro2", "pro3"],
   "cons": ["con1", "con2", "con3"],
   "complaints": ["Specific real complaint from reviews — quote or paraphrase actual customer issues, e.g. 'Product caused allergic reactions and hair damage', 'Missing items with no refund offered', 'Conditioner left hair dry despite claims'"],
-  "reviewSummary": "2-3 sentences summarizing what real customers actually experienced. Be specific and personal — mention actual product issues, customer service problems, shipping delays, or quality concerns from the reviews. If reviews mention health/safety issues (allergic reactions, skin irritation, product damage), highlight those prominently. If no reviews exist, say 'No customer reviews available for this store yet.'",
+  "reviewSummary": "Write like a friend giving shopping advice, not a robot. 2-3 sentences covering BOTH the good AND the bad from the reviews. Reference specific customer names and their experiences when available. Example tone: 'Most folks seem happy with the product quality — Sarah and Mike both loved the fast shipping. But heads up, a few people like Jane complained about sizing being way off and customer support ghosting them.' If no reviews exist, say 'No customer reviews available for this store yet.'",
   "redFlags": ["flag1", "flag2"],
   "suspiciousSignals": ["signal1", "signal2"],
   "whoShouldBuy": "1-2 sentences describing ideal buyer for this store",
@@ -133,7 +139,7 @@ Return ONLY this JSON (no markdown, no explanation):
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
-      max_tokens: 1200,
+      max_tokens: 1500,
     });
 
     const raw = (response.content[0] as { type: string; text: string })?.text || "{}";

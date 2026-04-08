@@ -8,7 +8,7 @@ import {
   ArrowLeft, Share2, ExternalLink, Star, ChevronDown, ChevronUp, ShoppingCart,
   RotateCcw, CreditCard, Truck, Users, UserX, ShieldCheck, Tag, Shield, Lock,
 } from "lucide-react";
-import type { Report, RiskLevel, Verdict, StoreSignal, PriceVerdict } from "@/lib/types";
+import type { Report, RiskLevel, Verdict, StoreSignal, PriceVerdict, TrustpilotReview } from "@/lib/types";
 import FBAdChecker from "@/components/FBAdChecker";
 
 // ─── Motion presets ───────────────────────────────────────────────────────────
@@ -782,35 +782,44 @@ export default function ReportPage() {
               </a>
             </div>
 
-            {/* ── Reviews + Verdict ── */}
-            {(report.trustpilotReviews ?? []).length > 0 && (() => {
-              const reviews = report.trustpilotReviews ?? [];
-              const r       = report.trustpilotRating!;
-              const txt     = reviews.join(" ").toLowerCase();
+            {/* ── Structured Reviews (good + bad) ── */}
+            {(() => {
+              const goodRevs = (report.trustpilotGoodReviews ?? []) as TrustpilotReview[];
+              const badRevs  = (report.trustpilotBadReviews ?? []) as TrustpilotReview[];
+              const legacyRevs = report.trustpilotReviews ?? [];
+              const hasStructured = goodRevs.length > 0 || badRevs.length > 0;
+              const hasAny = hasStructured || legacyRevs.length > 0;
+              if (!hasAny) return null;
+
+              const r = report.trustpilotRating!;
+
+              // Verdict logic
+              const allText = hasStructured
+                ? [...goodRevs, ...badRevs].map(rv => rv.content).join(" ").toLowerCase()
+                : legacyRevs.join(" ").toLowerCase();
 
               const themes: string[] = [];
-              if (/not delivered|never arrived|still waiting|hasn't arrived|late deliver|slow ship|weeks to arrive|month.*wait/.test(txt))
+              if (/not delivered|never arrived|still waiting|hasn't arrived|late deliver|slow ship|weeks to arrive|month.*wait/.test(allText))
                 themes.push("slow or missing deliveries");
-              if (/poor quality|bad quality|cheap|broke|defective|fake|not as described|wrong item|low quality|terrible product/.test(txt))
+              if (/poor quality|bad quality|cheap|broke|defective|fake|not as described|wrong item|low quality|terrible product/.test(allText))
                 themes.push("poor product quality");
-              if (/hidden.*sub|subscription|charged.*again|bank.*charged|keeps.*charging|unauthorized|scam|fraud/.test(txt))
+              if (/hidden.*sub|subscription|charged.*again|bank.*charged|keeps.*charging|unauthorized/.test(allText))
                 themes.push("unexpected charges or hidden subscriptions");
-              if (/no response|doesn.*reply|ignore|terrible support|bad.*service|worst.*service|no.*support|never.*contact/.test(txt))
+              if (/no response|doesn.*reply|ignore|terrible support|bad.*service|worst.*service|no.*support|never.*contact/.test(allText))
                 themes.push("unresponsive customer support");
-              if (/won.*refund|refus.*refund|no refund|hard.*return|difficult.*return/.test(txt))
+              if (/won.*refund|refus.*refund|no refund|hard.*return|difficult.*return/.test(allText))
                 themes.push("difficulty getting refunds");
 
-              const posWords = (txt.match(/amazing|excellent|great|love|recommend|happy|satisfied|fast|quick|perfect|wonderful|helpful|best/g) ?? []).length;
-              const negWords = (txt.match(/terrible|awful|worst|bad|scam|fraud|fake|broken|never|don.t recommend|waste|disapoint|useless/g) ?? []).length;
+              const posWords = (allText.match(/amazing|excellent|great|love|recommend|happy|satisfied|fast|quick|perfect|wonderful|helpful|best/g) ?? []).length;
+              const negWords = (allText.match(/terrible|awful|worst|bad|broken|never|don.t recommend|waste|disapoint|useless/g) ?? []).length;
 
               const isPositive = r >= 4.2 && posWords >= negWords && themes.length === 0;
               const isNegative = r < 3.0 || themes.length >= 2 || negWords > posWords;
 
-              let summary: string, advice: string, verdictLabel: string;
+              let verdictLabel: string;
               let vColor: string, vBg: string, vBorder: string;
-
-              // Use AI-generated reviewSummary if available, otherwise fall back to regex themes
               const aiReviewSummary = (report as unknown as { reviewSummary?: string }).reviewSummary;
+              let summary: string, advice: string;
 
               if (isPositive) {
                 summary      = aiReviewSummary || "Customers consistently report positive experiences — fast shipping, good product quality, and helpful support are frequently mentioned.";
@@ -839,19 +848,77 @@ export default function ReportPage() {
                 vColor = "#fbbf24"; vBg = "rgba(251,191,36,0.07)"; vBorder = "rgba(251,191,36,0.2)";
               }
 
+              // Star renderer for individual reviews
+              const ReviewStars = ({ count }: { count: number }) => (
+                <div className="flex gap-px">
+                  {[1, 2, 3, 4, 5].map(s => {
+                    const color = count >= 4 ? "#00b67a" : count >= 3 ? "#fbbf24" : count >= 2 ? "#f97316" : "#ef4444";
+                    return (
+                      <Star key={s} className="h-2.5 w-2.5"
+                        style={{ color: s <= count ? color : "rgba(255,255,255,0.1)", fill: s <= count ? color : "transparent" }} />
+                    );
+                  })}
+                </div>
+              );
+
+              // Single review card
+              const ReviewCard = ({ rev }: { rev: TrustpilotReview }) => (
+                <div className="rounded-xl px-3.5 py-3"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <ReviewStars count={rev.rating} />
+                      <span className="text-[11px] font-medium text-gray-300">{rev.author}</span>
+                    </div>
+                    {rev.date !== "Unknown" && (
+                      <span className="text-[10px] text-gray-600">{rev.date}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev.content}&rdquo;</p>
+                </div>
+              );
+
               return (
                 <div className="border-t px-5 pb-5 pt-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                  <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-3">What customers say</p>
 
-                  {/* Review cards */}
-                  <div className="space-y-2 mb-4">
-                    {reviews.slice(0, 4).map((rev, i) => (
-                      <div key={i} className="rounded-xl px-3.5 py-2.5"
-                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev}&rdquo;</p>
+                  {/* ── Structured: Good + Bad sections ── */}
+                  {hasStructured ? (
+                    <div className="space-y-4 mb-4">
+                      {goodRevs.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#4ade80" }}>
+                            Positive reviews ({goodRevs.length})
+                          </p>
+                          <div className="space-y-2">
+                            {goodRevs.slice(0, 4).map((rev, i) => <ReviewCard key={`g${i}`} rev={rev} />)}
+                          </div>
+                        </div>
+                      )}
+                      {badRevs.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>
+                            Negative reviews ({badRevs.length})
+                          </p>
+                          <div className="space-y-2">
+                            {badRevs.slice(0, 4).map((rev, i) => <ReviewCard key={`b${i}`} rev={rev} />)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Legacy flat snippets fallback */
+                    <div className="mb-4">
+                      <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-3">What customers say</p>
+                      <div className="space-y-2">
+                        {legacyRevs.slice(0, 4).map((rev, i) => (
+                          <div key={i} className="rounded-xl px-3.5 py-2.5"
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                            <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev}&rdquo;</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Verdict card */}
                   <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${vBorder}` }}>
