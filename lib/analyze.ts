@@ -279,9 +279,10 @@ Verdict rules:
       if (!isExact && verdict === "marked_up") verdict = "overpriced";
 
       const searchTerm = encodeURIComponent(raw.identifiedAs || product.name);
-      const imageSearchUrl = product.image
-        ? `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(product.image)}`
-        : `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`;
+
+      // Affiliate tags (set via env vars, fallback to non-affiliate)
+      const amazonTag = process.env.AMAZON_AFFILIATE_TAG || "";
+      const amazonSuffix = amazonTag ? `&tag=${amazonTag}` : "";
 
       return {
         productName: product.name,
@@ -298,7 +299,7 @@ Verdict rules:
         googleLensUrl: product.image
           ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}`
           : null,
-        amazonSearchUrl: `https://www.amazon.com/s?k=${searchTerm}`,
+        amazonSearchUrl: `https://www.amazon.com/s?k=${searchTerm}${amazonSuffix}`,
         // AliExpress: search by image via Google Lens redirect (more accurate than keyword)
         aliexpressSearchUrl: product.image
           ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}&hl=en`

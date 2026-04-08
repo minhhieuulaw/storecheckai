@@ -877,6 +877,9 @@ export default function ReportPage() {
                 );
               })}
             </div>
+            <p className="text-[10px] text-gray-700 mt-2 text-right">
+              Links may earn us a small commission at no extra cost to you.
+            </p>
           </motion.div>
         )}
 
