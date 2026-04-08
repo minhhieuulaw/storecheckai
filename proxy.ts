@@ -25,6 +25,10 @@ const PUBLIC_PREFIXES = [
   "/privacy",      // privacy policy
   "/terms",        // terms of service
   "/contact",      // contact page
+  "/database",     // public store safety database
+  "/store",        // public store SEO pages
+  "/sitemap",      // sitemap.xml for SEO
+  "/robots",       // robots.txt for SEO
   "/checkout",     // success/cancel pages
   "/report",       // shareable public report pages
   "/_next",

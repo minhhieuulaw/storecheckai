@@ -31,6 +31,7 @@ export function Navbar() {
     { label: t.nav.howItWorks,    href: "/#how-it-works"   },
     { label: t.nav.sampleReport,  href: "/#sample-report"  },
     { label: t.nav.pricing,       href: "/pricing"         },
+    { label: "Database",          href: "/database"        },
     { label: t.nav.faq,           href: "/#faq"            },
   ];
 
