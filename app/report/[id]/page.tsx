@@ -709,28 +709,31 @@ export default function ReportPage() {
               let summary: string, advice: string, verdictLabel: string;
               let vColor: string, vBg: string, vBorder: string;
 
+              // Use AI-generated reviewSummary if available, otherwise fall back to regex themes
+              const aiReviewSummary = (report as unknown as { reviewSummary?: string }).reviewSummary;
+
               if (isPositive) {
-                summary      = "Customers consistently report positive experiences — fast shipping, good product quality, and helpful support are frequently mentioned.";
+                summary      = aiReviewSummary || "Customers consistently report positive experiences — fast shipping, good product quality, and helpful support are frequently mentioned.";
                 advice       = "This store looks reliable. You can proceed with confidence, but always keep your order confirmation just in case.";
                 verdictLabel = "Safe to buy";
                 vColor = "#4ade80"; vBg = "rgba(34,197,94,0.07)"; vBorder = "rgba(34,197,94,0.2)";
               } else if (themes.length > 0 && isNegative) {
-                summary      = `Reviewers frequently complain about: ${themes.join(", ")}.`;
+                summary      = aiReviewSummary || `Reviewers frequently complain about: ${themes.join(", ")}.`;
                 advice       = "Think twice before purchasing here — explore alternative stores first. If you proceed, use PayPal or a credit card so you can dispute charges if needed.";
                 verdictLabel = "High risk";
                 vColor = "#f87171"; vBg = "rgba(239,68,68,0.07)"; vBorder = "rgba(239,68,68,0.2)";
               } else if (themes.length > 0) {
-                summary      = `Reviewers frequently complain about: ${themes.join(", ")}.`;
+                summary      = aiReviewSummary || `Reviewers frequently complain about: ${themes.join(", ")}.`;
                 advice       = "Proceed with caution — check the return policy before ordering and use a payment method that allows disputes.";
                 verdictLabel = "Use caution";
                 vColor = "#fbbf24"; vBg = "rgba(251,191,36,0.07)"; vBorder = "rgba(251,191,36,0.2)";
               } else if (isNegative) {
-                summary      = "The majority of reviews are negative, with customers reporting bad experiences overall.";
+                summary      = aiReviewSummary || "The majority of reviews are negative, with customers reporting bad experiences overall.";
                 advice       = "We recommend avoiding this store or exploring alternatives before making a purchase.";
                 verdictLabel = "Not recommended";
                 vColor = "#f87171"; vBg = "rgba(239,68,68,0.07)"; vBorder = "rgba(239,68,68,0.2)";
               } else {
-                summary      = "Reviews are mixed — some customers are satisfied while others report issues.";
+                summary      = aiReviewSummary || "Reviews are mixed — some customers are satisfied while others report issues.";
                 advice       = "Read the most recent reviews carefully and use a payment method with buyer protection.";
                 verdictLabel = "Mixed reviews";
                 vColor = "#fbbf24"; vBg = "rgba(251,191,36,0.07)"; vBorder = "rgba(251,191,36,0.2)";

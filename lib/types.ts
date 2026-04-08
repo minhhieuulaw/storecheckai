@@ -109,6 +109,7 @@ export interface Report {
 
   // Content
   verdictReason: string;
+  reviewSummary?: string;
   pros: string[];
   cons: string[];
   complaints: string[];

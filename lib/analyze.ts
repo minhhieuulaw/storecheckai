@@ -24,6 +24,7 @@ export interface AIAnalysis {
   returnRisk: RiskLevel;
   returnSummary: string;
   reviewConfidence: ReviewConfidence;
+  reviewSummary: string;
   pros: string[];
   cons: string[];
   complaints: string[];
@@ -113,12 +114,13 @@ Return ONLY this JSON (no markdown, no explanation):
   "reviewConfidence": "LOW" | "MODERATE" | "HIGH" | "UNKNOWN",
   "pros": ["pro1", "pro2", "pro3"],
   "cons": ["con1", "con2", "con3"],
-  "complaints": ["Most likely complaint theme 1", "theme 2", "theme 3"],
+  "complaints": ["Specific real complaint from reviews — quote or paraphrase actual customer issues, e.g. 'Product caused allergic reactions and hair damage', 'Missing items with no refund offered', 'Conditioner left hair dry despite claims'"],
+  "reviewSummary": "2-3 sentences summarizing what real customers actually experienced. Be specific and personal — mention actual product issues, customer service problems, shipping delays, or quality concerns from the reviews. If reviews mention health/safety issues (allergic reactions, skin irritation, product damage), highlight those prominently. If no reviews exist, say 'No customer reviews available for this store yet.'",
   "redFlags": ["flag1", "flag2"],
   "suspiciousSignals": ["signal1", "signal2"],
   "whoShouldBuy": "1-2 sentences describing ideal buyer for this store",
-  "whoShouldAvoid": "1-2 sentences describing who should avoid this store",
-  "finalTake": "2-3 sentences of honest, direct shopping advice",
+  "whoShouldAvoid": "1-2 sentences describing who should avoid this store — reference specific complaints from reviews if available",
+  "finalTake": "2-3 sentences of honest, direct shopping advice — reference specific customer experiences if available, not just generic policy warnings",
   "trustScoreAdjustment": 0,
   "nonDeliveryRisk": false,
   "scamPatterns": [],
@@ -144,6 +146,7 @@ Return ONLY this JSON (no markdown, no explanation):
       returnRisk: (["LOW", "MEDIUM", "HIGH"].includes(parsed.returnRisk) ? parsed.returnRisk : returnRiskFromRules) as RiskLevel,
       returnSummary: parsed.returnSummary || "Return policy details unavailable.",
       reviewConfidence: (["LOW", "MODERATE", "HIGH", "UNKNOWN"].includes(parsed.reviewConfidence) ? parsed.reviewConfidence : "UNKNOWN") as ReviewConfidence,
+      reviewSummary: parsed.reviewSummary || "",
       pros: Array.isArray(parsed.pros) ? parsed.pros.slice(0, 5) : [],
       cons: Array.isArray(parsed.cons) ? parsed.cons.slice(0, 5) : [],
       complaints: Array.isArray(parsed.complaints) ? parsed.complaints.slice(0, 4) : [],
@@ -172,6 +175,7 @@ function buildFallbackAnalysis(data: ScrapedData, trustScore: number, returnRisk
     returnRisk,
     returnSummary: data.hasReturnPolicy ? "Return policy exists — review full details before purchasing." : "No return policy found. Consider this a high risk purchase.",
     reviewConfidence: "UNKNOWN",
+    reviewSummary: data.trustpilotReviews?.length ? "Customer reviews exist but AI analysis was unavailable. Read the review snippets below for details." : "No customer reviews available for this store yet.",
     pros: data.isHttps ? ["Site uses HTTPS encryption"] : [],
     cons: [
       ...(!data.hasReturnPolicy ? ["No return policy found"] : []),

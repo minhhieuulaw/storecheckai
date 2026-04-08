@@ -173,6 +173,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       verdict: ai.verdict,
 
       verdictReason: ai.verdictReason,
+      reviewSummary: ai.reviewSummary || undefined,
       pros:       ai.pros,
       cons:       ai.cons,
       complaints: planFeatures.fullReport ? ai.complaints       : [],
