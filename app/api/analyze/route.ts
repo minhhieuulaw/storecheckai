@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { scrapeStore } from "@/lib/scraper";
 import { calculateTrustScore, calculateReturnRisk } from "@/lib/scoring";
-import { analyzeWithAI, analyzeProductPrices, getAmazonRecommendations } from "@/lib/analyze";
+import { analyzeWithAI, analyzeProductPrices, getAmazonRecommendations, extractProductIntel } from "@/lib/analyze";
 import { saveReport } from "@/lib/store";
 import { verifySession, findUserById } from "@/lib/auth";
 import { useCheck, addChecks, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
@@ -22,6 +22,7 @@ type CachedAnalysis = {
   signals: ReturnType<typeof calculateTrustScore>["signals"];
   returnRiskRules: ReturnType<typeof calculateReturnRisk>["risk"];
   ai: Awaited<ReturnType<typeof analyzeWithAI>>;
+  productIntel: Awaited<ReturnType<typeof extractProductIntel>>;
   expiresAt: number;
 };
 const analysisCache = new Map<string, CachedAnalysis>();
@@ -144,16 +145,26 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       scraped = await scrapeStore(url);
       ({ trustScore: rawScore, signals } = calculateTrustScore(scraped));
       ({ risk: returnRiskRules } = calculateReturnRisk(scraped));
-      ai = await analyzeWithAI(scraped, rawScore, returnRiskRules, locale);
-      analysisCache.set(domain, { scraped, rawScore, signals, returnRiskRules, ai, expiresAt: now + CACHE_TTL_MS });
+
+      // Extract product intel first (GPT-4o-mini, ~1-2s), then feed into Claude
+      const productIntelResult = scraped.pageContent
+        ? await extractProductIntel(scraped.pageContent, scraped.products, scraped.pageTitle, url)
+        : null;
+
+      ai = await analyzeWithAI(scraped, rawScore, returnRiskRules, locale, productIntelResult);
+      analysisCache.set(domain, { scraped, rawScore, signals, returnRiskRules, ai, productIntel: productIntelResult, expiresAt: now + CACHE_TTL_MS });
     }
 
-    // ── 6. Price analysis (plan-gated) + Amazon recommendations (always) ───
+    const productIntel = analysisCache.get(domain)?.productIntel ?? null;
+
+    // ── 6. Price analysis (plan-gated) + Amazon recommendations (with intel) ──
     const [priceAnalysis, amazonRecs] = await Promise.all([
       planFeatures.priceAnalysis ? analyzeProductPrices(scraped.products) : Promise.resolve([]),
-      // Amazon recommendations always run — they're free safety advice, not premium
-      getAmazonRecommendations(scraped.products, domain, { pageTitle: scraped.pageTitle, ogDescription: scraped.ogDescription ?? undefined })
-        .catch(err => { console.error("Amazon recs failed:", err); return []; }),
+      getAmazonRecommendations(
+        scraped.products, domain,
+        { pageTitle: scraped.pageTitle, ogDescription: scraped.ogDescription ?? undefined },
+        productIntel,
+      ).catch(err => { console.error("Amazon recs failed:", err); return []; }),
     ]);
 
     // ── 7. Community scam reports ───────────────────────────────────────────
@@ -208,6 +219,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
 
       nonDeliveryRisk: ai.nonDeliveryRisk,
       scamPatterns:    ai.scamPatterns,
+
+      productIntel:  productIntel ?? undefined,
 
       ogImage:       scraped.ogImage,
       isPartialData: !!scraped.scrapeError,

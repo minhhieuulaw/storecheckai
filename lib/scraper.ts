@@ -330,6 +330,53 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
   return empty;
 }
 
+// ── Extract visible page content for LLM product analysis ─────────────────
+export function extractVisiblePageContent($: cheerio.CheerioAPI): string {
+  // Clone to avoid modifying the original
+  const $c = cheerio.load($.html());
+  $c("script, style, nav, footer, header, iframe, noscript, svg").remove();
+
+  // Priority selectors — areas that usually contain product info
+  const prioritySelectors = [
+    "[data-product]", ".product-single", ".product__info",
+    ".product-details", "#product-description", ".product-description",
+    ".product-main", ".pdp-main", "[itemtype*='Product']",
+    "main", "article", "[role='main']",
+  ];
+
+  let text = "";
+  for (const sel of prioritySelectors) {
+    const el = $c(sel).first();
+    if (el.length) {
+      text = el.text().replace(/\s+/g, " ").trim();
+      if (text.length > 200) break;
+    }
+  }
+  if (text.length < 200) {
+    text = $c("body").text().replace(/\s+/g, " ").trim();
+  }
+
+  // Grab JSON-LD blocks (very useful for LLM)
+  const jsonLdBlocks: string[] = [];
+  $c('script[type="application/ld+json"]').each((_, el) => {
+    const content = $c(el).html()?.trim();
+    if (content && content.length < 2000) jsonLdBlocks.push(content);
+  });
+
+  // Meta tags
+  const meta = [
+    $c('meta[property="og:title"]').attr("content"),
+    $c('meta[property="og:description"]').attr("content"),
+    $c('meta[name="description"]').attr("content"),
+  ].filter(Boolean).join(" | ");
+
+  return [
+    meta ? `META: ${meta}` : "",
+    jsonLdBlocks.length ? `JSON-LD: ${jsonLdBlocks.join("\n")}` : "",
+    `PAGE CONTENT: ${text.slice(0, 4000)}`,
+  ].filter(Boolean).join("\n\n").slice(0, 6000);
+}
+
 function detectManipulationTactics(html: string): string[] {
   const h = html.toLowerCase();
   const tactics: string[] = [];
@@ -1230,6 +1277,7 @@ export async function scrapeStore(rawUrl: string): Promise<ScrapedData> {
 
   base.securityHeaders = headResult.headers;
   base.redirectsToNewDomain = headResult.redirectsToNewDomain;
+  base.pageContent = extractVisiblePageContent($);
   base.trustpilotRating = trustpilot.rating;
   base.trustpilotReviewCount = trustpilot.reviewCount;
   base.trustpilotReviews = trustpilot.reviews;           // legacy flat

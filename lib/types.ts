@@ -33,6 +33,45 @@ export interface TrustpilotReview {
   content: string;       // review text (max 300 chars)
 }
 
+// ── Deep Product Intelligence ──────────────────────────────────────────
+export type PageProductType =
+  | "single_product"
+  | "bundle_kit"
+  | "category_collection"
+  | "service_digital"
+  | "funnel_quiz"
+  | "unknown";
+
+export interface BundleComponent {
+  name: string;
+  fullSizePriceEstimate: string | null;
+  size: string | null;
+}
+
+export interface DeepProductIntel {
+  pageType: PageProductType;
+  productName: string;
+  brand: string | null;
+  category: string;
+  currentPrice: number | null;
+  originalPrice: number | null;
+  discountPercent: number | null;
+  currency: string;
+  limitedEdition: boolean;
+  bundleComponents: BundleComponent[];
+  bundleTotalValue: string | null;
+  bundleSavings: string | null;
+  ingredients: string[];
+  marketingClaims: string[];
+  targetConcerns: string[];
+  skinType: string | null;
+  usageInstructions: string | null;
+  onPageRating: number | null;
+  onPageReviewCount: number | null;
+  funnelSignals: string[];
+  searchKeywords: string[];
+}
+
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 export type SignalStatus = "pass" | "warn" | "fail" | "unknown";
 export type ReviewConfidence = "LOW" | "MODERATE" | "HIGH" | "UNKNOWN";
@@ -99,6 +138,7 @@ export interface ScrapedData {
   reviewPlatforms: string[];
   redirectsToNewDomain: boolean;
   scrapeError?: string;
+  pageContent?: string;  // truncated visible text for LLM product analysis
 }
 
 export interface Report {
@@ -153,6 +193,9 @@ export interface Report {
   // Risk signals
   nonDeliveryRisk: boolean;
   scamPatterns: string[];
+
+  // Deep Product Intelligence
+  productIntel?: DeepProductIntel;
 
   // Meta
   ogImage: string | null;

@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import type { ScrapedData, Verdict, RiskLevel, ReviewConfidence, ScrapedProduct, PriceAnalysis } from "./types";
+import type { ScrapedData, Verdict, RiskLevel, ReviewConfidence, ScrapedProduct, PriceAnalysis, DeepProductIntel, PageProductType } from "./types";
 import { VERDICT_THRESHOLDS } from "./scoring";
 import { appendAmazonAffiliateTag } from "./affiliate";
 
@@ -54,7 +54,7 @@ Rules:
 - trustScoreAdjustment range: -30 to +15. Use negative values aggressively when reviews are poor or suspicious patterns exist. Use -20 to -30 for stores with very bad Trustpilot ratings (below 3.0) combined with complaints about non-delivery or no refunds. Use -10 to -20 for stores with bad reviews (below 3.5) or overpriced products with poor reviews. Use +5 to +15 for genuinely excellent stores with strong positive signals.
 - Output ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Start your response with { and end with }.`;
 
-export async function analyzeWithAI(data: ScrapedData, trustScore: number, returnRiskFromRules: RiskLevel, locale = "en"): Promise<AIAnalysis> {
+export async function analyzeWithAI(data: ScrapedData, trustScore: number, returnRiskFromRules: RiskLevel, locale = "en", intel?: DeepProductIntel | null): Promise<AIAnalysis> {
   const language = LOCALE_LANGUAGE[locale] ?? "English";
   const secHdrs = data.securityHeaders;
   const headerCount = [secHdrs.hsts, secHdrs.xFrameOptions, secHdrs.csp, secHdrs.xContentTypeOptions].filter(Boolean).length;
@@ -105,6 +105,7 @@ ${hasStructuredReviews ? `- POSITIVE reviews (4-5★):\n${goodReviews.slice(0, 5
 - Domain redirects: ${data.redirectsToNewDomain ? "Yes — redirects to different domain" : "No"}
 - Rule-based trust score: ${trustScore}/100
 - Rule-based return risk: ${returnRiskFromRules}
+${intel ? `- PRODUCT INTELLIGENCE: ${intel.brand ? intel.brand + " " : ""}${intel.productName} (${intel.category}, ${intel.pageType}). ${intel.bundleComponents.length > 0 ? `Bundle of ${intel.bundleComponents.length} items: ${intel.bundleComponents.map(c => c.name).join(", ")}. ` : ""}${intel.currentPrice != null ? `Price: $${intel.currentPrice}${intel.originalPrice ? ` (was $${intel.originalPrice}, ${intel.discountPercent}% off)` : ""}. ` : ""}${intel.targetConcerns.length > 0 ? `Targets: ${intel.targetConcerns.join(", ")}. ` : ""}${intel.onPageRating ? `On-page rating: ${intel.onPageRating}/5 (${intel.onPageReviewCount} reviews). ` : ""}` : ""}
 ${data.scrapeError ? `- Note: ${data.scrapeError}` : ""}
 
 NON-DELIVERY & PRICING ANALYSIS RULES:
@@ -214,6 +215,108 @@ function buildFallbackAnalysis(data: ScrapedData, trustScore: number, returnRisk
   };
 }
 
+// ─── Deep Product Intelligence ────────────────────────────────────────────────
+
+const VALID_PAGE_TYPES: PageProductType[] = ["single_product", "bundle_kit", "category_collection", "service_digital", "funnel_quiz", "unknown"];
+
+export async function extractProductIntel(
+  pageContent: string,
+  products: ScrapedProduct[],
+  pageTitle: string,
+  url: string,
+): Promise<DeepProductIntel | null> {
+  try {
+    const existingProducts = products.length > 0
+      ? `\nEXISTING SCRAPED PRODUCTS:\n${products.slice(0, 4).map(p => `- ${p.name}: ${p.price}`).join("\n")}`
+      : "";
+
+    const response = await getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{
+        role: "system",
+        content: "You extract structured product intelligence from store pages. Output ONLY valid JSON.",
+      }, {
+        role: "user",
+        content: `Analyze this product page and extract intelligence.
+
+URL: ${url}
+PAGE TITLE: ${pageTitle}
+${existingProducts}
+
+${pageContent}
+
+Return JSON:
+{
+  "pageType": "single_product" | "bundle_kit" | "category_collection" | "service_digital" | "funnel_quiz" | "unknown",
+  "productName": "exact product name from page",
+  "brand": "brand name or null",
+  "category": "product category (Skincare, Electronics, Clothing, etc.)",
+  "currentPrice": 40.00,
+  "originalPrice": 69.00,
+  "discountPercent": 42,
+  "currency": "USD",
+  "limitedEdition": false,
+  "bundleComponents": [{"name": "...", "fullSizePriceEstimate": "$28", "size": "mini"}],
+  "bundleTotalValue": "$69 value",
+  "bundleSavings": "Save $29",
+  "ingredients": ["Vitamin C", "Hyaluronic Acid"],
+  "marketingClaims": ["Brighten", "Hydrate"],
+  "targetConcerns": ["Fine Lines", "Dark Spots"],
+  "skinType": "All skin types",
+  "usageInstructions": "Apply AM/PM after cleansing",
+  "onPageRating": 4.4,
+  "onPageReviewCount": 283,
+  "funnelSignals": ["Free Returns", "Free Shipping over $75"],
+  "searchKeywords": ["obagi vitamin c serum mini", "brightening skincare set"]
+}
+
+Rules:
+- bundleComponents ONLY if pageType is "bundle_kit" — list each item in the bundle
+- ingredients ONLY for skincare/health/beauty products
+- searchKeywords: 2-4 specific search terms a shopper would use on Amazon to find similar products
+- Prices must be numeric (no $ symbol), null if unknown
+- Keep arrays concise (max 5 items each except bundleComponents)`,
+      }],
+      max_tokens: 600,
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+    });
+
+    const raw = JSON.parse(response.choices[0]?.message?.content || "{}") as Record<string, unknown>;
+
+    return {
+      pageType: VALID_PAGE_TYPES.includes(raw.pageType as PageProductType) ? raw.pageType as PageProductType : "unknown",
+      productName: String(raw.productName || pageTitle).slice(0, 150),
+      brand: raw.brand ? String(raw.brand).slice(0, 60) : null,
+      category: String(raw.category || "General").slice(0, 40),
+      currentPrice: typeof raw.currentPrice === "number" ? raw.currentPrice : null,
+      originalPrice: typeof raw.originalPrice === "number" ? raw.originalPrice : null,
+      discountPercent: typeof raw.discountPercent === "number" ? Math.round(raw.discountPercent) : null,
+      currency: String(raw.currency || "USD").slice(0, 3),
+      limitedEdition: raw.limitedEdition === true,
+      bundleComponents: Array.isArray(raw.bundleComponents) ? raw.bundleComponents.slice(0, 10).map((c: Record<string, unknown>) => ({
+        name: String(c.name || "").slice(0, 100),
+        fullSizePriceEstimate: c.fullSizePriceEstimate ? String(c.fullSizePriceEstimate) : null,
+        size: c.size ? String(c.size) : null,
+      })) : [],
+      bundleTotalValue: raw.bundleTotalValue ? String(raw.bundleTotalValue) : null,
+      bundleSavings: raw.bundleSavings ? String(raw.bundleSavings) : null,
+      ingredients: Array.isArray(raw.ingredients) ? raw.ingredients.slice(0, 10).map(String) : [],
+      marketingClaims: Array.isArray(raw.marketingClaims) ? raw.marketingClaims.slice(0, 5).map(String) : [],
+      targetConcerns: Array.isArray(raw.targetConcerns) ? raw.targetConcerns.slice(0, 5).map(String) : [],
+      skinType: raw.skinType ? String(raw.skinType) : null,
+      usageInstructions: raw.usageInstructions ? String(raw.usageInstructions).slice(0, 200) : null,
+      onPageRating: typeof raw.onPageRating === "number" ? raw.onPageRating : null,
+      onPageReviewCount: typeof raw.onPageReviewCount === "number" ? raw.onPageReviewCount : null,
+      funnelSignals: Array.isArray(raw.funnelSignals) ? raw.funnelSignals.slice(0, 6).map(String) : [],
+      searchKeywords: Array.isArray(raw.searchKeywords) ? raw.searchKeywords.slice(0, 4).map(String) : [],
+    };
+  } catch (err) {
+    console.error("Product intel extraction failed:", err);
+    return null;
+  }
+}
+
 // ─── Amazon Bestseller Recommendations ──────────────────────────────────────
 
 export interface AmazonRecommendation {
@@ -229,10 +332,18 @@ export async function getAmazonRecommendations(
   products: { name: string }[],
   storeDomain: string,
   storeContext?: { pageTitle?: string; ogDescription?: string },
+  intel?: DeepProductIntel | null,
 ): Promise<AmazonRecommendation[]> {
-  // Build context from products OR page content (for funnel/quiz stores without product listings)
+  // Build context — use deep intel when available for much better recommendations
   let storeDescription: string;
-  if (products.length > 0) {
+  if (intel && intel.pageType !== "unknown") {
+    const keywords = intel.searchKeywords.join(", ");
+    const components = intel.bundleComponents.length > 0
+      ? ` Bundle includes: ${intel.bundleComponents.map(c => c.name).join(", ")}.`
+      : "";
+    const concerns = intel.targetConcerns.length > 0 ? ` Targets: ${intel.targetConcerns.join(", ")}.` : "";
+    storeDescription = `${intel.brand || ""} ${intel.productName} (${intel.category}). Keywords: ${keywords}.${components}${concerns}`.trim();
+  } else if (products.length > 0) {
     storeDescription = `Products on ${storeDomain}: ${products.slice(0, 4).map(p => p.name).join(", ")}`;
   } else if (storeContext?.pageTitle || storeContext?.ogDescription) {
     storeDescription = `Store ${storeDomain} — "${storeContext.pageTitle || ""}" — ${storeContext.ogDescription || ""}`.slice(0, 300);
