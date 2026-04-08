@@ -51,6 +51,27 @@ export async function getApprovedReportsForDomain(domain: string): Promise<ScamR
     .orderBy(desc(scamReports.createdAt));
 }
 
+/** Get count + snippets of approved scam reports for a domain (used in analysis) */
+export async function getDomainScamSummary(domain: string): Promise<{
+  count: number;
+  snippets: string[];
+}> {
+  const reports = await db.select({
+    content: scamReports.content,
+  }).from(scamReports)
+    .where(and(
+      eq(scamReports.domain, domain.toLowerCase()),
+      eq(scamReports.status, "approved"),
+    ))
+    .orderBy(desc(scamReports.createdAt))
+    .limit(5);
+
+  return {
+    count: reports.length,
+    snippets: reports.map(r => r.content.slice(0, 120)),
+  };
+}
+
 export async function reviewScamReport(
   id: string,
   status: "approved" | "rejected",

@@ -1083,6 +1083,36 @@ export default function ReportPage() {
                     </div>
                   )}
 
+                  {/* Community scam reports */}
+                  {(report as unknown as { communityReports?: { count: number; snippets: string[] } }).communityReports && (report as unknown as { communityReports: { count: number; snippets: string[] } }).communityReports.count > 0 && (() => {
+                    const cr = (report as unknown as { communityReports: { count: number; snippets: string[] } }).communityReports;
+                    return (
+                      <div
+                        className="rounded-2xl p-5"
+                        style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="h-6 w-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(239,68,68,0.15)" }}>
+                            <span className="text-xs">🚨</span>
+                          </div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-red-400/80">Community Reports</p>
+                          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                            style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>
+                            {cr.count} report{cr.count > 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        <p className="text-xs text-red-300/70 mb-3">Other users have flagged this store as potentially unsafe</p>
+                        <div className="space-y-2">
+                          {cr.snippets.map((s, i) => (
+                            <div key={i} className="rounded-xl px-3 py-2 text-xs text-gray-400 leading-relaxed"
+                              style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(239,68,68,0.1)" }}>
+                              &ldquo;{s}{s.length >= 120 ? "..." : ""}&rdquo;
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Manipulation tactics */}
                   {(report.manipulationTactics ?? []).length > 0 && (
                     <div

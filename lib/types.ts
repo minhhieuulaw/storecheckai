@@ -132,6 +132,9 @@ export interface Report {
   manipulationTactics: string[];
   reviewPlatforms: string[];
 
+  // Community data
+  communityReports?: { count: number; snippets: string[] };
+
   // Risk signals
   nonDeliveryRisk: boolean;
   scamPatterns: string[];

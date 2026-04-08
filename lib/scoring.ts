@@ -8,9 +8,9 @@ export interface ScoringResult {
 // Max earnable points across all signals (intentional total, not comment-only)
 // HTTPS(10) + SecHeaders(4) + ReturnPolicy(10) + PrivacyPolicy(7) + ToS(4)
 // + ContactPage(4) + Shipping(5) + Email(8) + Phone(6) + Address(7)
-// + AboutPage(5) + PaymentMethods(5) + DomainAge(14) + Trustpilot(10)
-// + BizReg(5) + SiteReviews(3) + CookieConsent(2) + SocialPresence(7) = 116
-const MAX_POINTS = 116;
+// + AboutPage(7) + PaymentMethods(5) + DomainAge(14) + Trustpilot(10)
+// + BizReg(5) + SiteReviews(3) + CookieConsent(2) + SocialPresence(7) = 118
+const MAX_POINTS = 118;
 
 // Verdict thresholds — used here and in analyze.ts fallback
 export const VERDICT_THRESHOLDS = {
@@ -128,20 +128,29 @@ export function calculateTrustScore(data: ScrapedData): ScoringResult {
     signals.push({ name: "Physical Address", status: "warn", detail: "No physical address listed", points: 0 });
   }
 
-  // --- ABOUT PAGE (5pts) ---
+  // --- ABOUT PAGE (7pts) ---
   if (!data.hasAboutPage) {
-    signals.push({ name: "About Page", status: "warn", detail: "No about page found — harder to verify store identity", points: 0 });
+    signals.push({ name: "About Page", status: "fail", detail: "No about page found — harder to verify store identity", points: 0 });
   } else if (data.aboutQualityScore >= 3) {
-    signals.push({ name: "About Page", status: "pass", detail: "Detailed about page with store history/team info", points: 5 });
-    raw += 5;
+    signals.push({ name: "About Page", status: "pass", detail: "Detailed about page with store history/team info", points: 7 });
+    raw += 7;
+  } else if (data.aboutQualityScore >= 2) {
+    signals.push({ name: "About Page", status: "warn", detail: "About page exists with some content", points: 4 });
+    raw += 4;
   } else {
     signals.push({ name: "About Page", status: "warn", detail: "About page exists but content is minimal", points: 2 });
     raw += 2;
   }
 
-  // --- PAYMENT METHODS (5pts) ---
+  // --- PAYMENT METHODS (5pts, with crypto-only penalty) ---
   const pm = data.paymentMethods;
-  if (pm.length >= 3) {
+  const pmLower = pm.map(p => p.toLowerCase());
+  const hasCrypto = pmLower.some(p => p.includes("bitcoin") || p.includes("crypto") || p.includes("btc") || p.includes("ethereum") || p.includes("usdt"));
+  const hasTraditional = pmLower.some(p => p.includes("visa") || p.includes("mastercard") || p.includes("paypal") || p.includes("stripe") || p.includes("amex") || p.includes("apple pay") || p.includes("google pay"));
+
+  if (hasCrypto && !hasTraditional) {
+    signals.push({ name: "Payment Methods", status: "fail", detail: `Crypto-only payments detected (${pm.join(", ")}) — no buyer protection or chargeback rights`, points: 0 });
+  } else if (pm.length >= 3) {
     signals.push({ name: "Payment Methods", status: "pass", detail: `${pm.length} payment options detected: ${pm.slice(0, 4).join(", ")}`, points: 5 });
     raw += 5;
   } else if (pm.length >= 1) {
@@ -282,7 +291,19 @@ export function calculateTrustScore(data: ScrapedData): ScoringResult {
     if (existing) existing.detail += ` — score penalty (-${deduction} pts)`;
   }
 
-  // 3. Domain redirect: -5
+  // 3. Crypto-only payment: -15 (no buyer protection)
+  {
+    const pmL = data.paymentMethods.map(p => p.toLowerCase());
+    const crypto = pmL.some(p => p.includes("bitcoin") || p.includes("crypto") || p.includes("btc") || p.includes("ethereum") || p.includes("usdt"));
+    const traditional = pmL.some(p => p.includes("visa") || p.includes("mastercard") || p.includes("paypal") || p.includes("stripe") || p.includes("amex") || p.includes("apple pay") || p.includes("google pay"));
+    if (crypto && !traditional) {
+      trustScore = Math.max(0, trustScore - 15);
+      const existing = signals.find(s => s.name === "Payment Methods");
+      if (existing) existing.detail += " — score penalty (-15 pts)";
+    }
+  }
+
+  // 4. Domain redirect: -5
   if (data.redirectsToNewDomain) {
     trustScore = Math.max(0, trustScore - 5);
     const existing = signals.find(s => s.name === "Domain Redirect");

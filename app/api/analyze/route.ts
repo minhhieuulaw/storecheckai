@@ -10,6 +10,7 @@ import { saveReport } from "@/lib/store";
 import { verifySession, findUserById } from "@/lib/auth";
 import { useCheck, addChecks, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
 import { sendCheckCompleteEmail } from "@/lib/email";
+import { getDomainScamSummary } from "@/lib/scam-reports";
 import type { Report, AnalyzeResponse } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -150,6 +151,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     // ── 6. Price analysis (never cached — plan-gated) ────────────────────────
     const priceAnalysis = planFeatures.priceAnalysis ? await analyzeProductPrices(scraped.products) : [];
 
+    // ── 7. Community scam reports ───────────────────────────────────────────
+    const communityReports = await getDomainScamSummary(domain).catch(() => ({ count: 0, snippets: [] }));
+
     const finalTrustScore = Math.min(100, Math.max(0, rawScore + ai.trustScoreAdjustment));
 
     // ── 8. Assemble report (gate by plan) ────────────────────────────────────
@@ -188,8 +192,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       trustpilotRating:     planFeatures.fullReport ? scraped.trustpilotRating      : null,
       trustpilotReviewCount: planFeatures.fullReport ? scraped.trustpilotReviewCount : null,
       trustpilotReviews:    planFeatures.fullReport ? (ai.translatedReviews?.length ? ai.translatedReviews : scraped.trustpilotReviews) : [],
-      manipulationTactics:  planFeatures.fullReport ? scraped.manipulationTactics  : [],
+      manipulationTactics:  scraped.manipulationTactics,  // always shown — safety-critical info
       reviewPlatforms:      planFeatures.fullReport ? scraped.reviewPlatforms       : [],
+
+      communityReports: communityReports.count > 0 ? communityReports : undefined,
 
       nonDeliveryRisk: ai.nonDeliveryRisk,
       scamPatterns:    ai.scamPatterns,
