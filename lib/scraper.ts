@@ -170,10 +170,10 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
 
   for (const candidate of candidates) {
     try {
-      // Fetch main page + low-star filtered page in parallel
-      // Trustpilot uses ?stars=N for single star filter; fetch 1-star page for worst reviews
-      const [mainHtml, badHtml] = await Promise.all([
+      // Fetch main page + page 2 + 1-star page in parallel for more reviews
+      const [mainHtml, page2Html, badHtml] = await Promise.all([
         fetchPage(`https://www.trustpilot.com/review/${candidate}`),
+        fetchPage(`https://www.trustpilot.com/review/${candidate}?page=2`),
         fetchPage(`https://www.trustpilot.com/review/${candidate}?stars=1`),
       ]);
       if (!mainHtml) continue;
@@ -238,15 +238,12 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
             const reviewsData = pageProps?.reviews as Array<Record<string, unknown>> | undefined;
             if (Array.isArray(reviewsData)) {
               for (const rv of reviewsData) {
-                // __NEXT_DATA__ reviews have nested consumer object
                 const consumer = rv.consumer as Record<string, unknown> | undefined;
                 const authorName = consumer?.displayName ?? consumer?.name ?? "Anonymous";
-                const rObj = rv.reviewRating ?? rv.rating;
-                const starVal = typeof rv.stars === "number" ? rv.stars
-                  : typeof rObj === "object" && rObj !== null ? parseFloat(String((rObj as Record<string, unknown>).ratingValue ?? "0"))
-                  : typeof rv.rating === "number" ? rv.rating : 0;
+                // Trustpilot __NEXT_DATA__: rv.rating is integer 1-5, rv.stars is undefined
+                const starVal = typeof rv.rating === "number" ? rv.rating : typeof rv.stars === "number" ? rv.stars : 0;
                 const datesObj = rv.dates as Record<string, unknown> | undefined;
-                const dateStr = String(datesObj?.publishedDate ?? datesObj?.experiencedDate ?? rv.createdAt ?? rv.datePublished ?? "").slice(0, 10);
+                const dateStr = String(datesObj?.publishedDate ?? datesObj?.experiencedDate ?? "").slice(0, 10);
                 const body = String(rv.text ?? rv.content ?? rv.reviewBody ?? "").trim();
                 if (body.length >= 20) {
                   into.push({
@@ -262,10 +259,12 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
         }
       }
 
-      // Extract from main page (mostly good reviews on Trustpilot default sort)
+      // Extract from main page (default sort — mostly recent/relevant reviews)
       extractFromHtml(mainHtml, allReviews);
+      // Page 2 for more coverage
+      if (page2Html) extractFromHtml(page2Html, allReviews);
 
-      // Extract from bad-reviews page
+      // Extract from 1-star filtered page for worst reviews
       const badPageReviews: TrustpilotReview[] = [];
       if (badHtml) extractFromHtml(badHtml, badPageReviews);
 
@@ -288,10 +287,37 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
         return true;
       }
 
-      // Combine & categorize
+      // Combine & smart-fill: aim for 5 good + 5 bad, fill from other side if insufficient
       const combined = [...allReviews, ...badPageReviews].filter(dedup);
-      const goodReviews = combined.filter(r => r.rating >= 4).slice(0, 5);
-      const badReviews  = combined.filter(r => r.rating > 0 && r.rating <= 3).slice(0, 5);
+      const allGood = combined.filter(r => r.rating >= 4);
+      const allBad  = combined.filter(r => r.rating > 0 && r.rating <= 3);
+      const allMid  = combined.filter(r => r.rating === 3); // 3-star can fill either side
+
+      let goodReviews = allGood.slice(0, 5);
+      let badReviews  = allBad.slice(0, 5);
+
+      // Smart fill: if one side is short, fill with random from the other or mid-range
+      const totalTarget = 10;
+      const currentTotal = goodReviews.length + badReviews.length;
+      if (currentTotal < totalTarget) {
+        const remaining = combined.filter(r =>
+          !goodReviews.includes(r) && !badReviews.includes(r)
+        );
+        if (goodReviews.length < 5 && badReviews.length >= 5) {
+          // All bad, fill good slots with remaining
+          goodReviews = [...goodReviews, ...remaining.slice(0, 5 - goodReviews.length)];
+        } else if (badReviews.length < 5 && goodReviews.length >= 5) {
+          // All good, fill bad slots with remaining
+          badReviews = [...badReviews, ...remaining.slice(0, 5 - badReviews.length)];
+        } else {
+          // Both short, distribute remaining evenly
+          const needGood = 5 - goodReviews.length;
+          const needBad = 5 - badReviews.length;
+          const half = Math.ceil(remaining.length / 2);
+          goodReviews = [...goodReviews, ...remaining.slice(0, Math.min(needGood, half))];
+          badReviews = [...badReviews, ...remaining.slice(half, half + Math.min(needBad, remaining.length - half))];
+        }
+      }
 
       // Legacy flat snippets for backward compat
       for (const r of combined.slice(0, 5)) {

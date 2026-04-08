@@ -881,36 +881,40 @@ export default function ReportPage() {
               return (
                 <div className="border-t px-5 pb-5 pt-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
 
-                  {/* ── Structured: Good + Bad sections ── */}
+                  {/* ── Structured: Good + Bad in scrollable container ── */}
                   {hasStructured ? (
-                    <div className="space-y-4 mb-4">
+                    <div className="max-h-[420px] overflow-y-auto pr-1 space-y-4 mb-4 scrollbar-thin"
+                      style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
                       {goodRevs.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#4ade80" }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 sticky top-0 py-1 z-10"
+                            style={{ color: "#4ade80", background: "rgba(10,10,20,0.95)", backdropFilter: "blur(4px)" }}>
                             Positive reviews ({goodRevs.length})
                           </p>
                           <div className="space-y-2">
-                            {goodRevs.slice(0, 4).map((rev, i) => <ReviewCard key={`g${i}`} rev={rev} />)}
+                            {goodRevs.slice(0, 5).map((rev, i) => <ReviewCard key={`g${i}`} rev={rev} />)}
                           </div>
                         </div>
                       )}
                       {badRevs.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 sticky top-0 py-1 z-10"
+                            style={{ color: "#f87171", background: "rgba(10,10,20,0.95)", backdropFilter: "blur(4px)" }}>
                             Negative reviews ({badRevs.length})
                           </p>
                           <div className="space-y-2">
-                            {badRevs.slice(0, 4).map((rev, i) => <ReviewCard key={`b${i}`} rev={rev} />)}
+                            {badRevs.slice(0, 5).map((rev, i) => <ReviewCard key={`b${i}`} rev={rev} />)}
                           </div>
                         </div>
                       )}
                     </div>
                   ) : (
                     /* Legacy flat snippets fallback */
-                    <div className="mb-4">
+                    <div className="max-h-[320px] overflow-y-auto pr-1 mb-4"
+                      style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
                       <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider mb-3">What customers say</p>
                       <div className="space-y-2">
-                        {legacyRevs.slice(0, 4).map((rev, i) => (
+                        {legacyRevs.slice(0, 10).map((rev, i) => (
                           <div key={i} className="rounded-xl px-3.5 py-2.5"
                             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                             <p className="text-xs text-gray-400 leading-relaxed">&ldquo;{rev}&rdquo;</p>
