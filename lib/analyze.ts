@@ -213,17 +213,24 @@ export interface AmazonRecommendation {
 export async function getAmazonRecommendations(
   products: { name: string }[],
   storeDomain: string,
+  storeContext?: { pageTitle?: string; ogDescription?: string },
 ): Promise<AmazonRecommendation[]> {
-  if (products.length === 0) return [];
-
-  const productNames = products.slice(0, 4).map(p => p.name).join(", ");
+  // Build context from products OR page content (for funnel/quiz stores without product listings)
+  let storeDescription: string;
+  if (products.length > 0) {
+    storeDescription = `Products on ${storeDomain}: ${products.slice(0, 4).map(p => p.name).join(", ")}`;
+  } else if (storeContext?.pageTitle || storeContext?.ogDescription) {
+    storeDescription = `Store ${storeDomain} — "${storeContext.pageTitle || ""}" — ${storeContext.ogDescription || ""}`.slice(0, 300);
+  } else {
+    return []; // No products AND no page context — can't recommend
+  }
 
   try {
     const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{
         role: "user",
-        content: `A shopper is looking at these products on ${storeDomain}: ${productNames}
+        content: `A shopper is browsing: ${storeDescription}
 
 Find 5-7 REAL popular Amazon bestseller alternatives in the same product category.
 Only include products that:
