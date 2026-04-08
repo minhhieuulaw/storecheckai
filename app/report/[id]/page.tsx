@@ -768,6 +768,21 @@ export default function ReportPage() {
 
         {/* ── PRICE CHECK ─────────────────────────────────────────────────── */}
         {isBasicPlan && <LockedSection label="Price Comparison (Amazon · AliExpress)" />}
+        {!isBasicPlan && (report.priceAnalysis ?? []).length === 0 && (report.products ?? []).length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={viewportOnce}
+            transition={{ duration: 0.4 }}
+            className="mb-5">
+            <SectionHeader label="Price Check" badge="GPT-4o Vision" />
+            <div className="rounded-2xl p-5 text-center"
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-sm text-gray-500">No product listings detected on this store.</p>
+              <p className="text-xs text-gray-700 mt-1">Price comparison is available when the store exposes product data.</p>
+            </div>
+          </motion.div>
+        )}
         {!isBasicPlan && (report.priceAnalysis ?? []).length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
