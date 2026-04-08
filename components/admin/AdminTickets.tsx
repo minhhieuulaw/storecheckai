@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import {
   MessageCircle, Clock, CheckCheck, XCircle,
   ChevronDown, ChevronUp, Send, Loader2,
-  RefreshCw, Filter,
+  RefreshCw, Filter, ArrowLeft,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Ticket {
@@ -191,6 +192,7 @@ function TicketRow({ ticket, onAction }: { ticket: Ticket; onAction: () => void 
 }
 
 export function AdminTickets() {
+  const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -230,11 +232,19 @@ export function AdminTickets() {
     <div className="px-8 py-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/admin")}
+            className="flex items-center justify-center h-9 w-9 rounded-xl hover:bg-white/[0.05] transition-colors"
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+            <ArrowLeft className="h-4 w-4 text-gray-400" />
+          </button>
+          <div>
           <h1 className="text-2xl font-bold text-white">Support Tickets</h1>
           <p className="text-sm text-gray-500 mt-1">
             {total} total · {openCount} open · {repliedCount} awaiting user response
           </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
