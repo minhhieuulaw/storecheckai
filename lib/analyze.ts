@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ScrapedData, Verdict, RiskLevel, ReviewConfidence, ScrapedProduct, PriceAnalysis } from "./types";
 import { VERDICT_THRESHOLDS } from "./scoring";
+import { appendAmazonAffiliateTag } from "./affiliate";
 
 // OpenAI — vision/price analysis only
 let _openai: OpenAI | null = null;
@@ -280,10 +281,6 @@ Verdict rules:
 
       const searchTerm = encodeURIComponent(raw.identifiedAs || product.name);
 
-      // Affiliate tags (set via env vars, fallback to non-affiliate)
-      const amazonTag = process.env.AMAZON_AFFILIATE_TAG || "";
-      const amazonSuffix = amazonTag ? `&tag=${amazonTag}` : "";
-
       return {
         productName: product.name,
         storePrice: product.priceUsd != null ? `$${product.priceUsd}` : (product.price ?? "Unknown"),
@@ -299,7 +296,7 @@ Verdict rules:
         googleLensUrl: product.image
           ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}`
           : null,
-        amazonSearchUrl: `https://www.amazon.com/s?k=${searchTerm}${amazonSuffix}`,
+        amazonSearchUrl: appendAmazonAffiliateTag(`https://www.amazon.com/s?k=${searchTerm}`),
         // AliExpress: search by image via Google Lens redirect (more accurate than keyword)
         aliexpressSearchUrl: product.image
           ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}&hl=en`
