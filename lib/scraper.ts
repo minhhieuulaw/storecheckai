@@ -650,36 +650,182 @@ function toUsd(num: number, currency: string): number | null {
 }
 
 async function fetchShopifyProducts(baseUrl: string, currency: string): Promise<ScrapedProduct[]> {
+  // Strategy 1: /products.json (standard Shopify API)
+  const fromApi = await fetchShopifyProductsApi(baseUrl, currency);
+  if (fromApi.length > 0) return fromApi;
+
+  // Strategy 2: /collections/all (HTML scrape — works when /products.json is blocked)
+  const fromCollection = await fetchShopifyCollectionHtml(baseUrl, currency);
+  if (fromCollection.length > 0) return fromCollection;
+
+  // Strategy 3: /search?q=* (search all products — last resort)
+  const fromSearch = await fetchShopifySearchHtml(baseUrl, currency);
+  return fromSearch;
+}
+
+async function fetchShopifyProductsApi(baseUrl: string, currency: string): Promise<ScrapedProduct[]> {
   try {
-    // Fetch extra products so we still have 4-6 after filtering out non-physical items
     const res = await fetch(`${baseUrl}/products.json?limit=12`, {
       headers: US_HEADERS,
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return [];
     const data = await res.json() as { products: ShopifyProductJson[] };
-    const physical: ScrapedProduct[] = [];
-    for (const p of data.products ?? []) {
-      if (physical.length >= 6) break;
-      if (!p.title || isNonPhysicalProduct(p.title, p.product_type)) continue;
-      const rawPrice = p.variants?.[0]?.price;
-      if (!rawPrice) continue;
-      const num = parseFloat(rawPrice);
-      if (isNaN(num)) continue;
-      physical.push({
-        name: p.title,
-        price: formatPrice(num, currency),
-        priceNumeric: num,
-        priceUsd: toUsd(num, currency),
-        image: p.images?.[0]?.src ?? null,
-        url: `${baseUrl}/products/${p.handle}`,
-        currency,
-      });
-    }
-    return physical;
+    return parseShopifyJsonProducts(data.products ?? [], baseUrl, currency);
   } catch {
     return [];
   }
+}
+
+async function fetchShopifyCollectionHtml(baseUrl: string, currency: string): Promise<ScrapedProduct[]> {
+  try {
+    const html = await fetchPage(`${baseUrl}/collections/all`);
+    if (!html) return [];
+    return parseShopifyHtmlProducts(html, baseUrl, currency);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchShopifySearchHtml(baseUrl: string, currency: string): Promise<ScrapedProduct[]> {
+  try {
+    const html = await fetchPage(`${baseUrl}/search?q=*&type=product`);
+    if (!html) return [];
+    return parseShopifyHtmlProducts(html, baseUrl, currency);
+  } catch {
+    return [];
+  }
+}
+
+function parseShopifyJsonProducts(products: ShopifyProductJson[], baseUrl: string, currency: string): ScrapedProduct[] {
+  const physical: ScrapedProduct[] = [];
+  for (const p of products) {
+    if (physical.length >= 6) break;
+    if (!p.title || isNonPhysicalProduct(p.title, p.product_type)) continue;
+    const rawPrice = p.variants?.[0]?.price;
+    if (!rawPrice) continue;
+    const num = parseFloat(rawPrice);
+    if (isNaN(num)) continue;
+    physical.push({
+      name: p.title,
+      price: formatPrice(num, currency),
+      priceNumeric: num,
+      priceUsd: toUsd(num, currency),
+      image: p.images?.[0]?.src ?? null,
+      url: `${baseUrl}/products/${p.handle}`,
+      currency,
+    });
+  }
+  return physical;
+}
+
+function parseShopifyHtmlProducts(html: string, baseUrl: string, currency: string): ScrapedProduct[] {
+  const $ = cheerio.load(html);
+  const products: ScrapedProduct[] = [];
+
+  // Method A: JSON-LD in collection/search pages
+  const jsonLd = parseJsonLdProducts($, baseUrl);
+  if (jsonLd.length > 0) return jsonLd;
+
+  // Method B: Parse product cards from HTML
+  // Shopify themes commonly use these selectors for product cards
+  const cardSelectors = [
+    ".product-card",
+    ".grid-product",
+    "[data-product-card]",
+    ".product-item",
+    ".product-grid-item",
+    ".collection-product",
+    ".product-block",
+    ".grid__item .card",
+  ];
+
+  const selector = cardSelectors.join(", ");
+  $(selector).each((_, el) => {
+    if (products.length >= 6) return;
+    const $el = $(el);
+
+    // Extract product link
+    const linkEl = $el.find("a[href*='/products/']").first();
+    const href = linkEl.attr("href");
+    if (!href) return;
+    const url = href.startsWith("http") ? href : `${baseUrl}${href}`;
+
+    // Extract product name
+    const name =
+      $el.find(".product-card__title, .grid-product__title, .card__heading, .product-item__title, .product__title, h3, h2").first().text().trim() ||
+      linkEl.attr("title")?.trim() ||
+      linkEl.text().trim();
+    if (!name || name.length < 2) return;
+    if (isNonPhysicalProduct(name, "")) return;
+
+    // Extract price
+    const priceText =
+      $el.find(".price, .money, .product-price, .price__regular, [data-product-price], .price-item").first().text().trim();
+    const priceMatch = priceText.match(/[\d,.]+/);
+    if (!priceMatch) return;
+    const num = parseFloat(priceMatch[0].replace(/,/g, ""));
+    if (isNaN(num) || num <= 0) return;
+
+    // Extract image
+    const imgEl = $el.find("img").first();
+    let image = imgEl.attr("src") || imgEl.attr("data-src") || imgEl.attr("data-srcset")?.split(" ")[0] || null;
+    if (image && image.startsWith("//")) image = `https:${image}`;
+    if (image && !image.startsWith("http")) image = `${baseUrl}${image}`;
+
+    products.push({
+      name: name.slice(0, 120),
+      price: formatPrice(num, currency),
+      priceNumeric: num,
+      priceUsd: toUsd(num, currency),
+      image,
+      url,
+      currency,
+    });
+  });
+
+  // Method C: Fallback — look for any /products/ links with price nearby
+  if (products.length === 0) {
+    $('a[href*="/products/"]').each((_, el) => {
+      if (products.length >= 6) return;
+      const $a = $(el);
+      const href = $a.attr("href");
+      if (!href || href.includes("/products/") === false) return;
+
+      const url = href.startsWith("http") ? href : `${baseUrl}${href}`;
+      const name = $a.attr("title")?.trim() || $a.text().trim();
+      if (!name || name.length < 3 || name.length > 150) return;
+      if (isNonPhysicalProduct(name, "")) return;
+
+      // Look for price in parent or sibling elements
+      const parent = $a.closest("div, li, article");
+      const priceText = parent.find(".price, .money, [data-product-price]").first().text().trim();
+      const priceMatch = priceText.match(/[\d,.]+/);
+      if (!priceMatch) return;
+      const num = parseFloat(priceMatch[0].replace(/,/g, ""));
+      if (isNaN(num) || num <= 0) return;
+
+      // Get image from same container
+      const imgEl = parent.find("img").first();
+      let image = imgEl.attr("src") || imgEl.attr("data-src") || null;
+      if (image && image.startsWith("//")) image = `https:${image}`;
+
+      // Deduplicate by URL
+      if (products.some(p => p.url === url)) return;
+
+      products.push({
+        name: name.slice(0, 120),
+        price: formatPrice(num, currency),
+        priceNumeric: num,
+        priceUsd: toUsd(num, currency),
+        image,
+        url,
+        currency,
+      });
+    });
+  }
+
+  return products;
 }
 
 function parseJsonLdProducts($: cheerio.CheerioAPI, baseUrl: string): ScrapedProduct[] {
