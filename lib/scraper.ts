@@ -837,13 +837,40 @@ function parseJsonLdProducts($: cheerio.CheerioAPI, baseUrl: string): ScrapedPro
       for (const entry of entries) {
         const e = entry as Record<string, unknown>;
         if (e["@type"] !== "Product") continue;
-        const offer = (e.offers as Record<string, unknown>) ?? {};
-        const price = (offer.price ?? (offer as Record<string, unknown[]>).offers?.[0]) as string | undefined;
+
+        // Extract price from various JSON-LD offer structures
+        const offer = (e.offers ?? {}) as Record<string, unknown>;
+        let price: string | undefined;
+        let currency = "USD";
+
+        if (offer.price != null) {
+          // Simple: { offers: { price: "29.99", priceCurrency: "USD" } }
+          price = String(offer.price);
+          currency = String(offer.priceCurrency || "USD");
+        } else if (offer["@type"] === "AggregateOffer") {
+          // AggregateOffer: use lowPrice or nested offers[0].price
+          if (offer.lowPrice != null) {
+            price = String(offer.lowPrice);
+            currency = String(offer.priceCurrency || "USD");
+          } else if (Array.isArray(offer.offers) && offer.offers.length > 0) {
+            const first = offer.offers[0] as Record<string, unknown>;
+            price = first.price != null ? String(first.price) : undefined;
+            currency = String(first.priceCurrency || offer.priceCurrency || "USD");
+          }
+        } else if (Array.isArray(offer.offers)) {
+          // Nested offers array without AggregateOffer type
+          const first = (offer.offers as Record<string, unknown>[])[0];
+          if (first?.price != null) {
+            price = String(first.price);
+            currency = String(first.priceCurrency || "USD");
+          }
+        }
+
         const rawImage = e.image;
         const imageStr = Array.isArray(rawImage) ? String(rawImage[0]) : rawImage ? String(rawImage) : null;
         const num = price ? parseFloat(String(price)) : NaN;
-        if (!e.name || !price || isNaN(num)) continue;
-        const currency = String((offer.priceCurrency as string) || "USD");
+        if (!e.name || !price || isNaN(num) || num <= 0) continue;
+
         products.push({
           name: String(e.name).slice(0, 120),
           price: formatPrice(num, currency),
