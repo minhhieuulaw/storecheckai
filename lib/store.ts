@@ -1,7 +1,8 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
-import { reports } from "./schema";
+import { reports, analysisFailures } from "./schema";
 import type { Report } from "./types";
+import { nanoid } from "nanoid";
 
 // ── Estimated savings ──────────────────────────────────────────────────────────
 // Based on BBB Scam Tracker 2023: median online shopping scam loss = $74
@@ -58,4 +59,41 @@ export async function getUserReports(userId: string): Promise<Report[]> {
     .where(eq(reports.userId, userId))
     .orderBy(desc(reports.analyzedAt));
   return rows.map(r => r.reportData as unknown as Report);
+}
+
+// ── Analysis Failure Logs ─────────────────────────────────────────────────────
+
+export async function saveAnalysisFailure(data: {
+  userId?: string;
+  url: string;
+  domain: string;
+  errorType: string;
+  errorMsg: string;
+  userAgent?: string;
+}): Promise<void> {
+  try {
+    await db.insert(analysisFailures).values({
+      id: nanoid(12),
+      userId: data.userId ?? null,
+      url: data.url,
+      domain: data.domain,
+      errorType: data.errorType,
+      errorMsg: data.errorMsg.slice(0, 2000),
+      userAgent: data.userAgent ?? null,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to save analysis failure log:", err);
+  }
+}
+
+export async function getAnalysisFailures(limit = 50, offset = 0) {
+  const rows = await db
+    .select()
+    .from(analysisFailures)
+    .orderBy(desc(analysisFailures.createdAt))
+    .limit(limit)
+    .offset(offset);
+  const countResult = await db.select({ count: sql<number>`count(*)` }).from(analysisFailures);
+  return { rows, total: Number(countResult[0]?.count ?? 0) };
 }

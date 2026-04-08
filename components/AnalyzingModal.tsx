@@ -8,15 +8,29 @@ import { useTranslation } from "@/lib/i18n";
 const STEP_ICONS = [Globe, Shield, FileText, Mail, Brain, Sparkles];
 const STEP_DURATIONS = [3000, 2500, 3000, 2000, 5000, 2000];
 
+// Hook messages shown after all steps complete — keeps user engaged during longer waits
+const HOOK_MESSAGES = [
+  "Almost there — just double-checking everything...",
+  "Crunching the numbers on this one...",
+  "Comparing prices across Amazon & AliExpress...",
+  "Reading through customer reviews...",
+  "Making sure we didn't miss anything...",
+  "This store has a lot to unpack — hang tight!",
+  "Finishing up the safety assessment...",
+  "Just a few more seconds...",
+];
+
 interface Props { url: string; open: boolean; }
 
 export function AnalyzingModal({ url, open }: Props) {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [hookMessage, setHookMessage] = useState("");
+  const [allStepsDone, setAllStepsDone] = useState(false);
 
   useEffect(() => {
-    if (!open) { setCurrentStep(0); setCompletedSteps([]); return; }
+    if (!open) { setCurrentStep(0); setCompletedSteps([]); setHookMessage(""); setAllStepsDone(false); return; }
     let elapsed = 0;
     const timers: ReturnType<typeof setTimeout>[] = [];
     STEP_DURATIONS.forEach((dur, i) => {
@@ -24,6 +38,15 @@ export function AnalyzingModal({ url, open }: Props) {
       elapsed += dur;
       timers.push(setTimeout(() => setCompletedSteps((p) => [...p, i]), elapsed - 400));
     });
+    // After all steps done, start cycling hook messages every 4s
+    timers.push(setTimeout(() => setAllStepsDone(true), elapsed));
+    let hookIdx = 0;
+    const hookStart = elapsed;
+    for (let h = 0; h < HOOK_MESSAGES.length; h++) {
+      timers.push(setTimeout(() => {
+        setHookMessage(HOOK_MESSAGES[h]);
+      }, hookStart + h * 4000));
+    }
     return () => timers.forEach(clearTimeout);
   }, [open]);
 
@@ -126,7 +149,19 @@ export function AnalyzingModal({ url, open }: Props) {
                   transition={{ duration: 0.5, ease: "easeOut" }}
                 />
               </div>
-              <p className="mt-3 text-center text-xs text-gray-600">{t.analyzing.timeNote}</p>
+              {allStepsDone && hookMessage ? (
+                <motion.p
+                  key={hookMessage}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-3 text-center text-xs text-indigo-400 font-medium"
+                >
+                  {hookMessage}
+                </motion.p>
+              ) : (
+                <p className="mt-3 text-center text-xs text-gray-600">{t.analyzing.timeNote}</p>
+              )}
             </div>
           </motion.div>
         </motion.div>

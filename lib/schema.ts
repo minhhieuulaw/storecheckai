@@ -80,9 +80,22 @@ export const scamReports = pgTable("scam_reports", {
   reviewedAt:  text("reviewed_at"),
 }, (t) => [index("scam_reports_domain_idx").on(t.domain)]);
 
+// ── Analysis Failure Logs ────────────────────────────────────────────────────
+export const analysisFailures = pgTable("analysis_failures", {
+  id:         text("id").primaryKey(),
+  userId:     text("user_id"),                               // null for anonymous
+  url:        text("url").notNull(),
+  domain:     text("domain").notNull(),
+  errorType:  text("error_type").notNull(),                  // "timeout" | "scrape_error" | "ai_error" | "unknown"
+  errorMsg:   text("error_msg").notNull(),
+  userAgent:  text("user_agent"),
+  createdAt:  text("created_at").notNull(),
+}, (t) => [index("analysis_failures_domain_idx").on(t.domain)]);
+
 export type UserRow               = typeof users.$inferSelect;
 export type ReportRow             = typeof reports.$inferSelect;
 export type SettingRow            = typeof settings.$inferSelect;
 export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
 export type TicketRow             = typeof tickets.$inferSelect;
 export type ScamReportRow         = typeof scamReports.$inferSelect;
+export type AnalysisFailureRow    = typeof analysisFailures.$inferSelect;

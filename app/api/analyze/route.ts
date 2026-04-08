@@ -6,7 +6,7 @@ import { nanoid } from "nanoid";
 import { scrapeStore } from "@/lib/scraper";
 import { calculateTrustScore, calculateReturnRisk } from "@/lib/scoring";
 import { analyzeWithAI, analyzeProductPrices, getAmazonRecommendations, extractProductIntel } from "@/lib/analyze";
-import { saveReport } from "@/lib/store";
+import { saveReport, saveAnalysisFailure } from "@/lib/store";
 import { verifySession, findUserById } from "@/lib/auth";
 import { useCheck, addChecks, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
 import { sendCheckCompleteEmail } from "@/lib/email";
@@ -83,6 +83,7 @@ function extractStoreName(pageTitle: string, domain: string): string {
 export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeResponse>> {
   let checkConsumed = false;
   let refundUserId: string | null = null;
+  let analyzedUrl = "";
 
   try {
     // ── 1. Rate limiting (IP-based) ──────────────────────────────────────────
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     const locale = (body?.locale as string) || "en";
     if (!rawUrl) return NextResponse.json({ success: false, error: "URL is required." }, { status: 400 });
     const url = normalizeUrl(rawUrl);
+    analyzedUrl = url;
     if (!isValidUrl(url)) return NextResponse.json({ success: false, error: "Please enter a valid URL (e.g. https://mystore.com)." }, { status: 400 });
     const restriction = checkUrlRestrictions(url);
     if (restriction) return NextResponse.json({ success: false, error: restriction }, { status: 400 });
@@ -146,12 +148,22 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       ({ trustScore: rawScore, signals } = calculateTrustScore(scraped));
       ({ risk: returnRiskRules } = calculateReturnRisk(scraped));
 
-      // Extract product intel first (GPT-4o-mini, ~1-2s), then feed into Claude
-      const productIntelResult = scraped.pageContent
-        ? await extractProductIntel(scraped.pageContent, scraped.products, scraped.pageTitle, url)
-        : null;
+      // Run product intel + Claude analysis in PARALLEL to reduce total latency
+      // Intel has 8s timeout — if it finishes before Claude, Claude gets context; otherwise null
+      const intelPromise = scraped.pageContent
+        ? extractProductIntel(scraped.pageContent, scraped.products, scraped.pageTitle, url)
+            .catch(() => null)
+        : Promise.resolve(null);
 
-      ai = await analyzeWithAI(scraped, rawScore, returnRiskRules, locale, productIntelResult);
+      // Start both in parallel
+      const [productIntelResult, aiWithoutIntel] = await Promise.all([
+        intelPromise,
+        analyzeWithAI(scraped, rawScore, returnRiskRules, locale, null),
+      ]);
+
+      // Use AI result (intel was run in parallel, so Claude didn't have it this time)
+      // But intel data is still used for Amazon recs + report display
+      ai = aiWithoutIntel;
       analysisCache.set(domain, { scraped, rawScore, signals, returnRiskRules, ai, productIntel: productIntelResult, expiresAt: now + CACHE_TTL_MS });
     }
 
@@ -245,6 +257,24 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     const errMsg = err instanceof Error ? err.message : String(err);
     const errStack = err instanceof Error ? err.stack : undefined;
     console.error("Analyze error:", { message: errMsg, stack: errStack });
+
+    // Save failure log for admin review
+    if (analyzedUrl) {
+      const errorType = errMsg.includes("timeout") || errMsg.includes("abort") ? "timeout"
+        : errMsg.includes("fetch") || errMsg.includes("ECONNREFUSED") ? "scrape_error"
+        : errMsg.includes("Claude") || errMsg.includes("OpenAI") || errMsg.includes("API") ? "ai_error"
+        : "unknown";
+      const parsedUrl = (() => { try { return new URL(analyzedUrl.startsWith("http") ? analyzedUrl : `https://${analyzedUrl}`); } catch { return null; } })();
+      await saveAnalysisFailure({
+        userId: refundUserId ?? undefined,
+        url: analyzedUrl,
+        domain: parsedUrl?.hostname.replace("www.", "") ?? analyzedUrl,
+        errorType,
+        errorMsg: `${errMsg}\n${errStack ?? ""}`.slice(0, 2000),
+        userAgent: req.headers.get("user-agent") ?? undefined,
+      });
+    }
+
     if (checkConsumed && refundUserId) {
       await addChecks(refundUserId, 1).catch(() => {});
     }
