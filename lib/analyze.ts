@@ -139,10 +139,17 @@ Return ONLY this JSON (no markdown, no explanation):
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
-      max_tokens: 1500,
+      max_tokens: 3000,
     });
 
-    const raw = (response.content[0] as { type: string; text: string })?.text || "{}";
+    let raw = (response.content[0] as { type: string; text: string })?.text || "{}";
+    // Recover truncated JSON: if response was cut off mid-stream, try to close it
+    if (!raw.trimEnd().endsWith("}")) {
+      // Find last complete key-value pair and close the object
+      const lastBrace = raw.lastIndexOf("}");
+      if (lastBrace > 0) raw = raw.slice(0, lastBrace + 1);
+      else raw = "{}";
+    }
     const parsed = JSON.parse(raw) as AIAnalysis;
 
     // Sanitize output

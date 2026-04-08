@@ -154,7 +154,8 @@ function parseTpReview(node: Record<string, unknown>): TrustpilotReview | null {
     : (typeof node.stars === "number" ? node.stars : typeof node.rating === "number" ? node.rating : null);
   const authorObj = node.author as Record<string, unknown> | undefined;
   const author = String(authorObj?.name ?? node.consumer?.toString() ?? "Anonymous").trim();
-  const dateRaw = String(node.datePublished ?? node.createdAt ?? node.dates?.toString() ?? "");
+  const datesNode = node.dates as Record<string, unknown> | undefined;
+  const dateRaw = String(node.datePublished ?? node.createdAt ?? datesNode?.publishedDate ?? datesNode?.experiencedDate ?? "");
   const date = dateRaw ? dateRaw.slice(0, 10) : "Unknown";
   return { author: author.slice(0, 60), rating: rating ?? 0, date, content: body.slice(0, 300) };
 }
@@ -169,10 +170,11 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
 
   for (const candidate of candidates) {
     try {
-      // Fetch main page + bad reviews page (filtered to 1-star) in parallel
+      // Fetch main page + low-star filtered page in parallel
+      // Trustpilot uses ?stars=N for single star filter; fetch 1-star page for worst reviews
       const [mainHtml, badHtml] = await Promise.all([
         fetchPage(`https://www.trustpilot.com/review/${candidate}`),
-        fetchPage(`https://www.trustpilot.com/review/${candidate}?stars=1&stars=2&stars=3`),
+        fetchPage(`https://www.trustpilot.com/review/${candidate}?stars=1`),
       ]);
       if (!mainHtml) continue;
 
@@ -224,9 +226,13 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
             const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown>;
             if (rating === null) {
               const bu = pageProps?.businessUnit as Record<string, unknown> | undefined;
-              if (bu?.stars) {
-                rating = parseFloat(String(bu.stars));
-                reviewCount = parseInt(String(bu.numberOfReviews ?? "0"), 10) || null;
+              if (bu) {
+                // trustScore is the precise TrustScore (e.g. 2.3); stars is rounded integer category
+                const precise = bu.trustScore ?? bu.score ?? bu.stars;
+                if (precise != null) {
+                  rating = parseFloat(String(precise));
+                  reviewCount = parseInt(String(bu.numberOfReviews ?? "0"), 10) || null;
+                }
               }
             }
             const reviewsData = pageProps?.reviews as Array<Record<string, unknown>> | undefined;
@@ -239,7 +245,8 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
                 const starVal = typeof rv.stars === "number" ? rv.stars
                   : typeof rObj === "object" && rObj !== null ? parseFloat(String((rObj as Record<string, unknown>).ratingValue ?? "0"))
                   : typeof rv.rating === "number" ? rv.rating : 0;
-                const dateStr = String(rv.dates?.toString() ?? rv.createdAt ?? rv.datePublished ?? "").slice(0, 10);
+                const datesObj = rv.dates as Record<string, unknown> | undefined;
+                const dateStr = String(datesObj?.publishedDate ?? datesObj?.experiencedDate ?? rv.createdAt ?? rv.datePublished ?? "").slice(0, 10);
                 const body = String(rv.text ?? rv.content ?? rv.reviewBody ?? "").trim();
                 if (body.length >= 20) {
                   into.push({

@@ -148,14 +148,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       analysisCache.set(domain, { scraped, rawScore, signals, returnRiskRules, ai, expiresAt: now + CACHE_TTL_MS });
     }
 
-    // ── 6. Price analysis (never cached — plan-gated) ────────────────────────
-    // ── 6b. Price analysis + Amazon recommendations (parallel) ────────────
+    // ── 6. Price analysis (plan-gated) + Amazon recommendations (always) ───
     const [priceAnalysis, amazonRecs] = await Promise.all([
       planFeatures.priceAnalysis ? analyzeProductPrices(scraped.products) : Promise.resolve([]),
-      planFeatures.priceAnalysis
-        ? getAmazonRecommendations(scraped.products, domain, { pageTitle: scraped.pageTitle, ogDescription: scraped.ogDescription ?? undefined })
-            .catch(err => { console.error("Amazon recs failed:", err); return []; })
-        : Promise.resolve([]),
+      // Amazon recommendations always run — they're free safety advice, not premium
+      getAmazonRecommendations(scraped.products, domain, { pageTitle: scraped.pageTitle, ogDescription: scraped.ogDescription ?? undefined })
+        .catch(err => { console.error("Amazon recs failed:", err); return []; }),
     ]);
 
     // ── 7. Community scam reports ───────────────────────────────────────────
