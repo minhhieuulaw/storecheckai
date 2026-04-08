@@ -152,7 +152,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     // ── 6b. Price analysis + Amazon recommendations (parallel) ────────────
     const [priceAnalysis, amazonRecs] = await Promise.all([
       planFeatures.priceAnalysis ? analyzeProductPrices(scraped.products) : Promise.resolve([]),
-      planFeatures.priceAnalysis ? getAmazonRecommendations(scraped.products, domain).catch(() => []) : Promise.resolve([]),
+      planFeatures.priceAnalysis ? getAmazonRecommendations(scraped.products, domain).catch(err => { console.error("Amazon recs failed:", err); return []; }) : Promise.resolve([]),
     ]);
 
     // ── 7. Community scam reports ───────────────────────────────────────────
