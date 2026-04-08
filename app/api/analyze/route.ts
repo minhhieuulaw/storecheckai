@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { scrapeStore } from "@/lib/scraper";
 import { calculateTrustScore, calculateReturnRisk } from "@/lib/scoring";
-import { analyzeWithAI, analyzeProductPrices } from "@/lib/analyze";
+import { analyzeWithAI, analyzeProductPrices, getAmazonRecommendations } from "@/lib/analyze";
 import { saveReport } from "@/lib/store";
 import { verifySession, findUserById } from "@/lib/auth";
 import { useCheck, addChecks, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
@@ -149,7 +149,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     }
 
     // ── 6. Price analysis (never cached — plan-gated) ────────────────────────
-    const priceAnalysis = planFeatures.priceAnalysis ? await analyzeProductPrices(scraped.products) : [];
+    // ── 6b. Price analysis + Amazon recommendations (parallel) ────────────
+    const [priceAnalysis, amazonRecs] = await Promise.all([
+      planFeatures.priceAnalysis ? analyzeProductPrices(scraped.products) : Promise.resolve([]),
+      planFeatures.priceAnalysis ? getAmazonRecommendations(scraped.products, domain).catch(() => []) : Promise.resolve([]),
+    ]);
 
     // ── 7. Community scam reports ───────────────────────────────────────────
     const communityReports = await getDomainScamSummary(domain).catch(() => ({ count: 0, snippets: [] }));
@@ -187,6 +191,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
 
       products:      scraped.products,
       priceAnalysis: planFeatures.priceAnalysis ? priceAnalysis : [],
+      amazonRecommendations: amazonRecs.length > 0 ? amazonRecs : undefined,
 
       paymentMethods:       planFeatures.fullReport ? scraped.paymentMethods       : [],
       shippingOriginSignals: planFeatures.fullReport ? scraped.shippingOriginSignals : [],

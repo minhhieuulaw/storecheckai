@@ -133,6 +133,9 @@ export interface Report {
   manipulationTactics: string[];
   reviewPlatforms: string[];
 
+  // Amazon recommendations
+  amazonRecommendations?: { name: string; estimatedPrice: string; rating: number; reviewCount: string; whyBuy: string; searchUrl: string }[];
+
   // Community data
   communityReports?: { count: number; snippets: string[] };
 

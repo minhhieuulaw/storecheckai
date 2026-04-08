@@ -199,6 +199,88 @@ function buildFallbackAnalysis(data: ScrapedData, trustScore: number, returnRisk
   };
 }
 
+// ─── Amazon Bestseller Recommendations ──────────────────────────────────────
+
+export interface AmazonRecommendation {
+  name: string;
+  estimatedPrice: string;
+  rating: number;
+  reviewCount: string;
+  whyBuy: string;
+  searchUrl: string;
+}
+
+export async function getAmazonRecommendations(
+  products: { name: string }[],
+  storeDomain: string,
+): Promise<AmazonRecommendation[]> {
+  if (products.length === 0) return [];
+
+  const productNames = products.slice(0, 4).map(p => p.name).join(", ");
+
+  try {
+    const response = await getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{
+        role: "user",
+        content: `A shopper is looking at these products on ${storeDomain}: ${productNames}
+
+Find 5-7 REAL popular Amazon bestseller alternatives in the same product category.
+Only include products that:
+- Are actual bestsellers or highly popular on Amazon USA
+- Have 4.4+ star rating with substantial review counts (500+ reviews)
+- Are from well-known or trusted brands
+
+Return ONLY this JSON array (no markdown):
+[
+  {
+    "name": "Full product name as it would appear on Amazon (brand + product name)",
+    "estimatedPrice": "$XX.XX",
+    "rating": 4.7,
+    "reviewCount": "12K+",
+    "whyBuy": "One short sentence — why this is a great alternative (e.g. 'Amazon's Choice with 50K+ reviews' or 'Best-selling in category, dermatologist recommended')"
+  }
+]
+
+IMPORTANT:
+- Use REAL product names that actually exist on Amazon — do not invent products
+- Include the brand name (e.g. "Olaplex No.3 Hair Perfector" not just "Hair Perfector")
+- Rating must be 4.4 or higher
+- reviewCount format: "1.2K+", "50K+", "890+"
+- Keep whyBuy under 15 words
+- Products should be genuinely relevant alternatives, not random items`,
+      }],
+      max_tokens: 600,
+      response_format: { type: "json_object" },
+    });
+
+    const raw = JSON.parse(response.choices[0]?.message?.content || "{}");
+    const items: AmazonRecommendation[] = (Array.isArray(raw) ? raw : raw.recommendations || raw.products || [])
+      .filter((item: Record<string, unknown>) =>
+        item.name && item.estimatedPrice && typeof item.rating === "number" && item.rating >= 4.4
+      )
+      .slice(0, 7)
+      .map((item: Record<string, unknown>) => {
+        const searchTerm = encodeURIComponent(String(item.name));
+        const tag = process.env.AMAZON_AFFILIATE_TAG;
+        const tagSuffix = tag ? `&tag=${tag}` : "";
+        return {
+          name: String(item.name).slice(0, 120),
+          estimatedPrice: String(item.estimatedPrice),
+          rating: Number(item.rating),
+          reviewCount: String(item.reviewCount || "500+"),
+          whyBuy: String(item.whyBuy || "").slice(0, 100),
+          searchUrl: `https://www.amazon.com/s?k=${searchTerm}${tagSuffix}`,
+        };
+      });
+
+    return items;
+  } catch (err) {
+    console.error("Amazon recommendations failed:", err);
+    return [];
+  }
+}
+
 // ─── GPT-4o Vision price analysis ───────────────────────────────────────────
 
 export async function analyzeProductPrices(products: ScrapedProduct[]): Promise<PriceAnalysis[]> {
