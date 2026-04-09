@@ -422,28 +422,25 @@ IMPORTANT:
 
 // ─── GPT-4o Vision price analysis ───────────────────────────────────────────
 
-export async function analyzeProductPrices(products: ScrapedProduct[]): Promise<PriceAnalysis[]> {
-  const eligible = products.filter(p => p.image?.startsWith("http") && p.price).slice(0, 4);
-  if (eligible.length === 0) return [];
+async function analyzeSingleProductPrice(product: ScrapedProduct): Promise<PriceAnalysis | null> {
+  if (!product.image?.startsWith("http") || !product.price) return null;
 
-  const results = await Promise.allSettled(
-    eligible.map(async (product): Promise<PriceAnalysis | null> => {
-      const priceLabel = product.priceUsd != null
-        ? `$${product.priceUsd} USD (converted from ${product.price})`
-        : product.price!;
+  const priceLabel = product.priceUsd != null
+    ? `$${product.priceUsd} USD (converted from ${product.price})`
+    : product.price;
 
-      const response = await getOpenAI().chat.completions.create({
-        model: "gpt-4o",
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: product.image!, detail: "low" },
-            },
-            {
-              type: "text",
-              text: `Product listed as "${product.name}" on an online store.
+  const response = await getOpenAI().chat.completions.create({
+    model: "gpt-4o",
+    messages: [{
+      role: "user",
+      content: [
+        {
+          type: "image_url",
+          image_url: { url: product.image, detail: "low" },
+        },
+        {
+          type: "text",
+          text: `Product listed as "${product.name}" on an online store.
 Store price: ${priceLabel}
 
 Identify the EXACT product from the image and return a price assessment for a US shopper.
@@ -474,64 +471,154 @@ Verdict rules:
 - "overpriced"= store price is 30–100% above Amazon retail (only confident if exactMatch)
 - "marked_up" = store price is 2x+ above Amazon retail (ONLY use when exactMatch is true)
 - If NOT exactMatch but store price seems high compared to similar products, use "overpriced" with cautious explanation`,
-            },
-          ],
-        }],
-        max_tokens: 350,
-        response_format: { type: "json_object" },
-      });
+        },
+      ],
+    }],
+    max_tokens: 350,
+    response_format: { type: "json_object" },
+  });
 
-      const raw = JSON.parse(response.choices[0]?.message?.content || "{}") as {
-        isPhysicalProduct?: boolean;
-        identifiedAs?: string;
-        exactMatch?: boolean;
-        amazonPrice?: string | null;
-        aliexpressPrice?: string | null;
-        markupNote?: string | null;
-        priceVerdict?: string;
-        explanation?: string;
-      };
+  const raw = JSON.parse(response.choices[0]?.message?.content || "{}") as {
+    isPhysicalProduct?: boolean;
+    identifiedAs?: string;
+    exactMatch?: boolean;
+    amazonPrice?: string | null;
+    aliexpressPrice?: string | null;
+    markupNote?: string | null;
+    priceVerdict?: string;
+    explanation?: string;
+  };
 
-      // Skip shipping upsells / service items identified by GPT
-      if (raw.isPhysicalProduct === false) return null;
+  if (raw.isPhysicalProduct === false) return null;
 
-      const isExact = raw.exactMatch === true;
-      const validVerdicts: PriceAnalysis["priceVerdict"][] = ["fair", "cheap", "overpriced", "marked_up"];
-      let verdict = validVerdicts.includes(raw.priceVerdict as PriceAnalysis["priceVerdict"])
-        ? raw.priceVerdict as PriceAnalysis["priceVerdict"]
-        : "fair";
+  const isExact = raw.exactMatch === true;
+  const validVerdicts: PriceAnalysis["priceVerdict"][] = ["fair", "cheap", "overpriced", "marked_up"];
+  let verdict = validVerdicts.includes(raw.priceVerdict as PriceAnalysis["priceVerdict"])
+    ? raw.priceVerdict as PriceAnalysis["priceVerdict"]
+    : "fair";
 
-      // Don't allow "marked_up" verdict when product isn't an exact match
-      if (!isExact && verdict === "marked_up") verdict = "overpriced";
+  if (!isExact && verdict === "marked_up") verdict = "overpriced";
 
-      const searchTerm = encodeURIComponent(raw.identifiedAs || product.name);
+  const searchTerm = encodeURIComponent(raw.identifiedAs || product.name);
 
+  return {
+    productName: product.name,
+    storePrice: product.priceUsd != null ? `$${product.priceUsd}` : (product.price ?? "Unknown"),
+    identifiedAs: raw.identifiedAs || product.name,
+    exactMatch: isExact,
+    estimatedMarketPrice: raw.amazonPrice || "Unknown",
+    aliexpressPrice: raw.aliexpressPrice || null,
+    markupNote: isExact ? (raw.markupNote || null) : null,
+    priceVerdict: verdict,
+    explanation: raw.explanation || "",
+    imageUrl: product.image,
+    googleLensUrl: product.image
+      ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}`
+      : null,
+    amazonSearchUrl: appendAmazonAffiliateTag(`https://www.amazon.com/s?k=${searchTerm}`),
+    aliexpressSearchUrl: product.image
+      ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}&hl=en`
+      : `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`,
+  };
+}
+
+// ─── Main product resolution & price check ──────────────────────────────────
+
+function safeUrlPath(url: string): string {
+  try { return new URL(url).pathname.toLowerCase(); } catch { return ""; }
+}
+
+function findBestProductMatch(intelName: string, products: ScrapedProduct[]): ScrapedProduct | null {
+  if (!intelName || products.length === 0) return null;
+  const normalizedIntel = intelName.toLowerCase().replace(/[^a-z0-9]/g, " ").trim();
+  const intelWords = new Set(normalizedIntel.split(/\s+/).filter(w => w.length > 2));
+  if (intelWords.size === 0) return null;
+
+  let bestMatch: ScrapedProduct | null = null;
+  let bestScore = 0;
+
+  for (const p of products) {
+    const normalizedProduct = p.name.toLowerCase().replace(/[^a-z0-9]/g, " ").trim();
+    const productWords = normalizedProduct.split(/\s+/).filter(w => w.length > 2);
+    const overlap = productWords.filter(w => intelWords.has(w)).length;
+    const score = overlap / Math.max(intelWords.size, 1);
+    if (score > bestScore && score >= 0.3) {
+      bestScore = score;
+      bestMatch = p;
+    }
+  }
+  return bestMatch;
+}
+
+function resolveMainProduct(
+  intel: DeepProductIntel | null,
+  products: ScrapedProduct[],
+  ogImage: string | null,
+  url: string,
+): ScrapedProduct | null {
+  // Non-product pages — skip price check entirely
+  if (intel && ["category_collection", "service_digital", "funnel_quiz"].includes(intel.pageType)) {
+    return null;
+  }
+
+  // CASE A: Intel identified a single product or bundle
+  if (intel && (intel.pageType === "single_product" || intel.pageType === "bundle_kit")) {
+    // Try to find matching product in scraped products[] by name similarity
+    const match = findBestProductMatch(intel.productName, products);
+    if (match && match.image?.startsWith("http")) {
       return {
-        productName: product.name,
-        storePrice: product.priceUsd != null ? `$${product.priceUsd}` : (product.price ?? "Unknown"),
-        identifiedAs: raw.identifiedAs || product.name,
-        exactMatch: isExact,
-        estimatedMarketPrice: raw.amazonPrice || "Unknown",
-        aliexpressPrice: raw.aliexpressPrice || null,
-        // Only show markup note for exact matches
-        markupNote: isExact ? (raw.markupNote || null) : null,
-        priceVerdict: verdict,
-        explanation: raw.explanation || "",
-        imageUrl: product.image,
-        googleLensUrl: product.image
-          ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}`
-          : null,
-        amazonSearchUrl: appendAmazonAffiliateTag(`https://www.amazon.com/s?k=${searchTerm}`),
-        // AliExpress: search by image via Google Lens redirect (more accurate than keyword)
-        aliexpressSearchUrl: product.image
-          ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}&hl=en`
-          : `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`,
+        ...match,
+        name: intel.productName || match.name,
+        price: intel.currentPrice != null ? `$${intel.currentPrice}` : match.price,
+        priceNumeric: intel.currentPrice ?? match.priceNumeric,
+        priceUsd: intel.currentPrice != null ? null : match.priceUsd,
+        currency: intel.currency || match.currency,
       };
-    })
-  );
+    }
 
-  return results
-    .filter((r): r is PromiseFulfilledResult<PriceAnalysis | null> => r.status === "fulfilled")
-    .map(r => r.value)
-    .filter((v): v is PriceAnalysis => v !== null);
+    // No match in products[] — construct synthetic product from intel + ogImage
+    if (intel.currentPrice != null && ogImage?.startsWith("http")) {
+      return {
+        name: intel.productName,
+        price: `$${intel.currentPrice}`,
+        priceNumeric: intel.currentPrice,
+        priceUsd: null,
+        image: ogImage,
+        url,
+        currency: intel.currency || "USD",
+      };
+    }
+  }
+
+  // CASE B: No intel or unknown page — try URL-matching against products[]
+  if (products.length > 0) {
+    const urlPath = safeUrlPath(url);
+    if (urlPath.includes("/products/") || urlPath.includes("/product/")) {
+      const urlMatch = products.find(p => p.url && safeUrlPath(p.url) === urlPath);
+      if (urlMatch && urlMatch.image?.startsWith("http") && urlMatch.price) {
+        return urlMatch;
+      }
+    }
+  }
+
+  // CASE C: No match possible
+  return null;
+}
+
+export async function analyzeMainProductPrice(
+  intel: DeepProductIntel | null,
+  products: ScrapedProduct[],
+  ogImage: string | null,
+  url: string,
+): Promise<PriceAnalysis[]> {
+  const mainProduct = resolveMainProduct(intel, products, ogImage, url);
+  if (!mainProduct) return [];
+
+  try {
+    const result = await analyzeSingleProductPrice(mainProduct);
+    return result ? [result] : [];
+  } catch (err) {
+    console.error("Main product price analysis failed:", err);
+    return [];
+  }
 }

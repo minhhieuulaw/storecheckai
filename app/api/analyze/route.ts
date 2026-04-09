@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { scrapeStore } from "@/lib/scraper";
 import { calculateTrustScore, calculateReturnRisk } from "@/lib/scoring";
-import { analyzeWithAI, analyzeProductPrices, getAmazonRecommendations, extractProductIntel } from "@/lib/analyze";
+import { analyzeWithAI, analyzeMainProductPrice, getAmazonRecommendations, extractProductIntel } from "@/lib/analyze";
 import { saveReport, saveAnalysisFailure } from "@/lib/store";
 import { verifySession, findUserById } from "@/lib/auth";
 import { useCheck, addChecks, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
@@ -178,7 +178,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
 
     // ── 6. Price analysis (plan-gated) + Amazon recommendations (with intel) ──
     const [priceAnalysis, amazonRecs] = await Promise.all([
-      planFeatures.priceAnalysis ? analyzeProductPrices(scraped.products) : Promise.resolve([]),
+      planFeatures.priceAnalysis ? analyzeMainProductPrice(productIntel, scraped.products, scraped.ogImage, url) : Promise.resolve([]),
       getAmazonRecommendations(
         scraped.products, domain,
         { pageTitle: scraped.pageTitle, ogDescription: scraped.ogDescription ?? undefined },
