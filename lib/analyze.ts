@@ -240,10 +240,12 @@ export async function extractProductIntel(
         content: `Analyze this product page and extract intelligence.
 
 URL: ${url}
-PAGE TITLE: ${pageTitle}
+PAGE TITLE: ${pageTitle.slice(0, 150)}
 ${existingProducts}
 
-${pageContent}
+<page_content>
+${pageContent.slice(0, 4000)}
+</page_content>
 
 Return JSON:
 {

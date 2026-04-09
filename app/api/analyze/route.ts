@@ -39,6 +39,13 @@ function rateLimit(key: string, max: number, windowMs: number): boolean {
   return true;
 }
 
+// Periodic cleanup — evict expired entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of rl) { if (now > v.resetAt) rl.delete(k); }
+  for (const [k, v] of analysisCache) { if (now > v.expiresAt) analysisCache.delete(k); }
+}, 10 * 60 * 1000).unref();
+
 // Marketplace domains that are not independent stores — analyzing them is not useful
 const MARKETPLACE_DOMAINS = new Set([
   "amazon.com", "amazon.co.uk", "amazon.de", "amazon.ca", "amazon.com.au",
@@ -265,14 +272,14 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
         : errMsg.includes("Claude") || errMsg.includes("OpenAI") || errMsg.includes("API") ? "ai_error"
         : "unknown";
       const parsedUrl = (() => { try { return new URL(analyzedUrl.startsWith("http") ? analyzedUrl : `https://${analyzedUrl}`); } catch { return null; } })();
-      await saveAnalysisFailure({
+      saveAnalysisFailure({
         userId: refundUserId ?? undefined,
         url: analyzedUrl,
         domain: parsedUrl?.hostname.replace("www.", "") ?? analyzedUrl,
         errorType,
         errorMsg: `${errMsg}\n${errStack ?? ""}`.slice(0, 2000),
         userAgent: req.headers.get("user-agent") ?? undefined,
-      });
+      }).catch(e => console.error("Failed to log analysis failure:", e));
     }
 
     if (checkConsumed && refundUserId) {

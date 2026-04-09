@@ -171,10 +171,11 @@ async function getTrustpilotData(domain: string): Promise<TrustpilotResult> {
   for (const candidate of candidates) {
     try {
       // Fetch main page + page 2 + 1-star page in parallel for more reviews
+      const safeCand = encodeURIComponent(candidate);
       const [mainHtml, page2Html, badHtml] = await Promise.all([
-        fetchPage(`https://www.trustpilot.com/review/${candidate}`),
-        fetchPage(`https://www.trustpilot.com/review/${candidate}?page=2`),
-        fetchPage(`https://www.trustpilot.com/review/${candidate}?stars=1`),
+        fetchPage(`https://www.trustpilot.com/review/${safeCand}`),
+        fetchPage(`https://www.trustpilot.com/review/${safeCand}?page=2`),
+        fetchPage(`https://www.trustpilot.com/review/${safeCand}?stars=1`),
       ]);
       if (!mainHtml) continue;
 
@@ -710,6 +711,7 @@ async function getDomainAge(domain: string): Promise<{ ageDays: number | null; c
 
   try {
     const rdapUrl = `${rdapBase}domain/${registrable}`;
+    if (isBlockedUrl(rdapUrl)) return { ageDays: null, createdAt: null };
     const res = await fetch(rdapUrl, {
       headers: { Accept: "application/rdap+json" },
       signal: AbortSignal.timeout(8000),
