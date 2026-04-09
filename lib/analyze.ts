@@ -14,7 +14,7 @@ function getOpenAI() {
 // Claude — text/store analysis
 let _anthropic: Anthropic | null = null;
 function getClaude() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 20000 }); // 20s max per call
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 45000 }); // 45s max — Claude Sonnet needs time for complex prompts
   return _anthropic;
 }
 
