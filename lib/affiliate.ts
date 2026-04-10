@@ -94,3 +94,54 @@ export function isAmazonShortLink(url: string): boolean {
     return false;
   }
 }
+
+// ─── AliExpress Affiliate Tag ────────────────────────────────────────────────
+
+const ALIEXPRESS_DOMAINS = new Set([
+  "aliexpress.com", "www.aliexpress.com",
+  "aliexpress.us", "www.aliexpress.us",
+  "s.click.aliexpress.com",
+  "star.aliexpress.com",
+]);
+
+function isAliExpressDomain(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  return ALIEXPRESS_DOMAINS.has(lower) || lower.endsWith(".aliexpress.com");
+}
+
+/**
+ * Manual AliExpress affiliate tag wrapper (fallback when Open Platform API fails).
+ *
+ * Appends tracking params:
+ *   sk={tracking_id}     — the tracking/Portals ID
+ *   aff_platform=portals-tool
+ *
+ * PREFER: `generateAffiliateLinks()` from lib/aliexpress-api.ts for proper s.click.aliexpress.com
+ * shortened links — those guarantee commission attribution. This manual wrap is a best-effort
+ * fallback only (works for direct product URLs but NOT guaranteed to track clicks).
+ *
+ * @param url       AliExpress URL to wrap
+ * @param trackingId Override tracking ID (defaults to ALIEXPRESS_TRACKING_ID env var)
+ * @returns Wrapped URL, or original if not AliExpress / no tracking ID configured
+ */
+export function appendAliExpressAffiliateTag(url: string, trackingId?: string): string {
+  const tid = trackingId ?? process.env.ALIEXPRESS_TRACKING_ID;
+  if (!tid) return url;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+
+  if (!isAliExpressDomain(parsed.hostname)) return url;
+
+  // If already a s.click.aliexpress.com short link, leave it alone (already tracked)
+  if (parsed.hostname === "s.click.aliexpress.com") return url;
+
+  // Add tracking params
+  parsed.searchParams.set("sk", tid);
+  parsed.searchParams.set("aff_platform", "portals-tool");
+  return parsed.toString();
+}

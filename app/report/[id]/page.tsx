@@ -219,6 +219,172 @@ function FactPill({ text, color, Icon }: { text: string; color: string; Icon: Re
   );
 }
 
+// ─── DropshipRiskCard ─────────────────────────────────────────────────────────
+
+function DropshipRiskCard({ risk }: {
+  risk: { markupScore: number; level: "low" | "medium" | "high" | "critical"; storePriceUsd: number | null; aliMedianPriceUsd: number | null; markupMultiplier: number | null; evidence: string[]; recommendation: string };
+}) {
+  const levelConfig = {
+    critical: { label: "Critical Dropship Risk", color: "#ef4444", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.25)", icon: AlertTriangle },
+    high:     { label: "High Markup Risk",       color: "#f97316", bg: "rgba(249,115,22,0.08)", border: "rgba(249,115,22,0.25)", icon: AlertTriangle },
+    medium:   { label: "Moderate Markup",        color: "#eab308", bg: "rgba(234,179,8,0.08)",  border: "rgba(234,179,8,0.2)",   icon: Zap },
+    low:      { label: "Fair Pricing",           color: "#22c55e", bg: "rgba(34,197,94,0.08)",  border: "rgba(34,197,94,0.2)",   icon: CheckCircle2 },
+  };
+  const cfg = levelConfig[risk.level];
+  const Icon = cfg.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4 }}
+      className="mb-5 rounded-2xl overflow-hidden"
+      style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+
+      {/* Header with markup score gauge */}
+      <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 mb-2"
+            style={{ background: "rgba(0,0,0,0.2)", border: `1px solid ${cfg.border}` }}>
+            <Icon className="h-3 w-3" style={{ color: cfg.color }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: cfg.color }}>
+              {cfg.label}
+            </span>
+          </div>
+          {risk.markupMultiplier != null && risk.storePriceUsd != null && risk.aliMedianPriceUsd != null && (
+            <p className="text-sm text-gray-300 leading-snug">
+              Store charges{" "}
+              <span className="font-bold text-white">${risk.storePriceUsd.toFixed(2)}</span>
+              {" · AliExpress median "}
+              <span className="font-bold text-green-400">${risk.aliMedianPriceUsd.toFixed(2)}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Markup score circular gauge */}
+        <div className="shrink-0 text-right">
+          <div className="relative h-16 w-16">
+            <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+              <circle
+                cx="32" cy="32" r="28" fill="none"
+                stroke={cfg.color}
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray={`${(risk.markupScore / 100) * 176} 176`}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-lg font-black" style={{ color: cfg.color }}>{risk.markupScore}</span>
+              <span className="text-[8px] text-gray-600 uppercase tracking-wider">/100</span>
+            </div>
+          </div>
+          {risk.markupMultiplier != null && risk.markupMultiplier >= 1.5 && (
+            <p className="text-[10px] font-bold mt-1" style={{ color: cfg.color }}>
+              {risk.markupMultiplier}× markup
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Evidence list */}
+      {risk.evidence.length > 0 && (
+        <div className="mx-5 mb-3 rounded-xl px-3 py-2.5"
+          style={{ background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.04)" }}>
+          <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1.5">Why we think this</p>
+          <ul className="space-y-1.5">
+            {risk.evidence.map((e, i) => (
+              <li key={i} className="flex gap-2 text-[11px] text-gray-300 leading-snug">
+                <span className="text-gray-600 shrink-0">•</span>
+                <span>{e}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* What to do next */}
+      <div className="mx-5 mb-4 rounded-xl px-3 py-2.5"
+        style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+        <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: cfg.color }}>What you should do</p>
+        <p className="text-[12px] text-gray-200 leading-relaxed">{risk.recommendation}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── LandedCostCard ───────────────────────────────────────────────────────────
+
+function LandedCostCard({ cost }: {
+  cost: { productPriceUsd: number; estimatedShippingUsd: number; estimatedDutyUsd: number; totalUsd: number; shippingTimeText: string; afterSalesRisk: "low" | "medium" | "high"; note: string };
+}) {
+  const riskColor = cost.afterSalesRisk === "high" ? "#ef4444" : cost.afterSalesRisk === "medium" ? "#eab308" : "#22c55e";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4 }}
+      className="mb-5 rounded-2xl overflow-hidden"
+      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+
+      <div className="px-5 pt-4 pb-3">
+        <div className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 mb-3"
+          style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)" }}>
+          <Package className="h-3 w-3 text-blue-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Total Cost to Your Door (US)</span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1">Product</p>
+            <p className="text-sm font-bold text-white">${cost.productPriceUsd.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1">Shipping</p>
+            <p className="text-sm font-bold text-gray-300">
+              {cost.estimatedShippingUsd > 0 ? `$${cost.estimatedShippingUsd.toFixed(2)}` : "Free*"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1">Import Duty</p>
+            <p className="text-sm font-bold text-gray-300">
+              {cost.estimatedDutyUsd > 0 ? `$${cost.estimatedDutyUsd.toFixed(2)}` : "$0"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div>
+            <p className="text-[9px] text-gray-600 uppercase tracking-wider">Estimated Total</p>
+            <p className="text-lg font-black text-white">${cost.totalUsd.toFixed(2)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] text-gray-600 uppercase tracking-wider">Shipping time</p>
+            <p className="text-xs font-semibold text-gray-300">{cost.shippingTimeText}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* After-sales warning */}
+      <div className="px-5 pb-4">
+        <div className="rounded-xl px-3 py-2.5 flex items-start gap-2"
+          style={{ background: `${riskColor}0d`, border: `1px solid ${riskColor}33` }}>
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: riskColor }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: riskColor }}>
+              After-sales risk: {cost.afterSalesRisk}
+            </p>
+            <p className="text-[11px] text-gray-300 leading-snug">{cost.note}</p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── ProductIntelCard ─────────────────────────────────────────────────────────
 
 function ProductIntelCard({ intel }: { intel: DeepProductIntel }) {
@@ -299,19 +465,8 @@ function ProductIntelCard({ intel }: { intel: DeepProductIntel }) {
         </div>
       )}
 
-      {/* Details grid */}
+      {/* Details grid — marketing claims removed (non-trust data) */}
       <div className="px-5 pb-4 flex flex-wrap gap-x-4 gap-y-2">
-        {intel.marketingClaims.length > 0 && (
-          <div>
-            <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1">Claims</p>
-            <div className="flex flex-wrap gap-1">
-              {intel.marketingClaims.map((c, i) => (
-                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full text-violet-300"
-                  style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)" }}>{c}</span>
-              ))}
-            </div>
-          </div>
-        )}
         {intel.targetConcerns.length > 0 && (
           <div>
             <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1">Best for</p>
@@ -368,10 +523,10 @@ function ProductIntelCard({ intel }: { intel: DeepProductIntel }) {
   );
 }
 
-// ─── AmazonRecommendations ────────────────────────────────────────────────────
+// ─── AliExpressRecommendations ────────────────────────────────────────────────
 
-function AmazonRecommendations({ recommendations }: {
-  recommendations: { name: string; estimatedPrice: string; rating: number; reviewCount: string; whyBuy: string; searchUrl: string }[];
+function AliExpressRecommendations({ recommendations }: {
+  recommendations: { productId: string; name: string; price: string; priceNumeric: number; rating: number | null; ordersText: string; imageUrl: string | null; productUrl: string }[];
 }) {
   return (
     <motion.div
@@ -380,7 +535,117 @@ function AmazonRecommendations({ recommendations }: {
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
       className="mb-5">
-      <SectionHeader label="Top Alternatives Worth Checking Out" badge="AI Picks" />
+      <SectionHeader label="Cheaper on AliExpress" badge="Live Data" />
+
+      <div className="rounded-2xl overflow-hidden"
+        style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.03) 0%, rgba(239,68,68,0.01) 100%)", border: "1px solid rgba(239,68,68,0.12)" }}>
+
+        {/* Header */}
+        <div className="px-4 py-3 flex items-center gap-2.5"
+          style={{ background: "rgba(239,68,68,0.06)", borderBottom: "1px solid rgba(239,68,68,0.1)" }}>
+          <ShoppingCart className="h-4 w-4 text-red-400" />
+          <span className="text-sm font-semibold text-red-300">
+            {recommendations.length} wholesale alternatives
+          </span>
+          <span className="ml-auto text-[10px] font-medium text-green-500 px-1.5 py-0.5 rounded-md"
+            style={{ background: "rgba(34,197,94,0.08)" }}>
+            Direct product links
+          </span>
+        </div>
+
+        {/* Product cards */}
+        <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+          {recommendations.map((rec, i) => (
+            <a
+              key={rec.productId}
+              href={rec.productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3.5 px-4 py-3.5 transition-all hover:bg-white/[0.04] group"
+              style={{ borderBottom: i < recommendations.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+
+              {/* Thumbnail with rank badge */}
+              <div className="relative shrink-0">
+                <div className="h-14 w-14 rounded-xl overflow-hidden flex items-center justify-center"
+                  style={{ background: rec.imageUrl ? "rgba(255,255,255,0.95)" : "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                  {rec.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={rec.imageUrl} alt={rec.name} className="h-full w-full object-contain p-1" loading="lazy"
+                      referrerPolicy="no-referrer"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  ) : (
+                    <ShoppingCart className="h-6 w-6 text-red-500/40" />
+                  )}
+                </div>
+                <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{
+                    background: i === 0 ? "linear-gradient(135deg, #ef4444, #f87171)" : i === 1 ? "linear-gradient(135deg, #94a3b8, #cbd5e1)" : "rgba(255,255,255,0.1)",
+                    color: i <= 1 ? "#000" : "#999",
+                    border: "2px solid rgba(10,10,20,1)",
+                  }}>
+                  {i + 1}
+                </div>
+              </div>
+
+              {/* Product details */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-gray-200 leading-snug mb-1.5 group-hover:text-red-300 transition-colors line-clamp-2">
+                  {rec.name}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  {rec.rating != null && (
+                    <div className="flex items-center gap-1">
+                      <div className="flex gap-px">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} className="h-2.5 w-2.5"
+                            style={{ color: s <= Math.round(rec.rating!) ? "#f59e0b" : "rgba(255,255,255,0.1)", fill: s <= Math.round(rec.rating!) ? "#f59e0b" : "transparent" }} />
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-semibold text-amber-400">{rec.rating.toFixed(1)}</span>
+                    </div>
+                  )}
+                  <span className="text-xs font-bold text-green-400 px-1.5 py-0.5 rounded-md"
+                    style={{ background: "rgba(34,197,94,0.08)" }}>
+                    {rec.price}
+                  </span>
+                  {rec.ordersText && (
+                    <span className="text-[10px] font-medium text-red-400 px-1.5 py-0.5 rounded-md"
+                      style={{ background: "rgba(239,68,68,0.08)" }}>
+                      {rec.ordersText}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all group-hover:bg-red-500/10"
+                style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                <ExternalLink className="h-3.5 w-3.5 text-gray-600 group-hover:text-red-400 transition-colors" />
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── AmazonRecommendations ────────────────────────────────────────────────────
+
+function AmazonRecommendations({ recommendations }: {
+  recommendations: { name: string; estimatedPrice: string; rating: number; reviewCount: string; whyBuy: string; searchUrl: string; asin?: string; productUrl?: string; imageUrl?: string; isPrime?: boolean; isBestSeller?: boolean; source?: "amazon-live" | "ai-estimated" }[];
+}) {
+  const isLive = recommendations[0]?.source === "amazon-live";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4 }}
+      className="mb-5">
+      <SectionHeader
+        label={isLive ? "Top Alternatives Worth Checking Out" : "Suggested Search Alternatives"}
+        badge={isLive ? "Live Amazon Data" : "AI Suggestions"}
+      />
 
       <div className="rounded-2xl overflow-hidden"
         style={{ background: "linear-gradient(135deg, rgba(255,153,0,0.03) 0%, rgba(255,200,50,0.02) 100%)", border: "1px solid rgba(255,153,0,0.12)" }}>
@@ -390,79 +655,104 @@ function AmazonRecommendations({ recommendations }: {
           style={{ background: "rgba(255,153,0,0.06)", borderBottom: "1px solid rgba(255,153,0,0.1)" }}>
           <ShoppingCart className="h-4 w-4 text-amber-400" />
           <span className="text-sm font-semibold text-amber-300">
-            {recommendations.length} similar products you might like
+            {isLive
+              ? `${recommendations.length} verified Amazon alternatives`
+              : `${recommendations.length} filtered Amazon searches`}
           </span>
+          {isLive ? (
+            <span className="ml-auto text-[10px] font-medium text-green-500 px-1.5 py-0.5 rounded-md"
+              style={{ background: "rgba(34,197,94,0.08)" }}>
+              Direct product links
+            </span>
+          ) : (
+            <span className="ml-auto text-[10px] font-medium text-gray-500 px-1.5 py-0.5 rounded-md"
+              style={{ background: "rgba(255,255,255,0.04)" }}>
+              Price-filtered search
+            </span>
+          )}
         </div>
 
         {/* Product cards */}
         <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-          {recommendations.map((rec, i) => {
-            // Generate Amazon thumbnail search URL
-            const thumbUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(rec.name + " product")}`;
-            const searchTerm = encodeURIComponent(rec.name);
-            const imgSrc = `https://via.placeholder.com/80x80/1a1a2e/ff9900?text=${i + 1}`;
+          {recommendations.map((rec, i) => (
+            <a
+              key={i}
+              href={rec.productUrl || rec.searchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3.5 px-4 py-3.5 transition-all hover:bg-white/[0.04] group"
+              style={{ borderBottom: i < recommendations.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
 
-            return (
-              <a
-                key={i}
-                href={rec.searchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3.5 px-4 py-3.5 transition-all hover:bg-white/[0.04] group"
-                style={{ borderBottom: i < recommendations.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-
-                {/* Thumbnail with rank badge */}
-                <div className="relative shrink-0">
-                  <div className="h-14 w-14 rounded-xl overflow-hidden flex items-center justify-center"
-                    style={{ background: "rgba(255,153,0,0.08)", border: "1px solid rgba(255,153,0,0.15)" }}>
-                    {/* Product icon placeholder — real images would need Amazon API */}
+              {/* Thumbnail with rank badge */}
+              <div className="relative shrink-0">
+                <div className="h-14 w-14 rounded-xl overflow-hidden flex items-center justify-center"
+                  style={{ background: rec.imageUrl ? "rgba(255,255,255,0.95)" : "rgba(255,153,0,0.08)", border: "1px solid rgba(255,153,0,0.15)" }}>
+                  {rec.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={rec.imageUrl} alt={rec.name} className="h-full w-full object-contain p-1" loading="lazy"
+                      referrerPolicy="no-referrer"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; (e.currentTarget.parentElement as HTMLElement).innerHTML = '<svg class="h-6 w-6 text-amber-500/40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>'; }} />
+                  ) : (
                     <ShoppingCart className="h-6 w-6 text-amber-500/40" />
-                  </div>
-                  {/* Rank badge */}
-                  <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                    style={{
-                      background: i === 0 ? "linear-gradient(135deg, #ff9900, #ffb347)" : i === 1 ? "linear-gradient(135deg, #94a3b8, #cbd5e1)" : "rgba(255,255,255,0.1)",
-                      color: i <= 1 ? "#000" : "#999",
-                      border: "2px solid rgba(10,10,20,1)",
-                    }}>
-                    {i + 1}
-                  </div>
+                  )}
                 </div>
+                {/* Rank badge */}
+                <div className="absolute -top-1.5 -left-1.5 h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{
+                    background: i === 0 ? "linear-gradient(135deg, #ff9900, #ffb347)" : i === 1 ? "linear-gradient(135deg, #94a3b8, #cbd5e1)" : "rgba(255,255,255,0.1)",
+                    color: i <= 1 ? "#000" : "#999",
+                    border: "2px solid rgba(10,10,20,1)",
+                  }}>
+                  {i + 1}
+                </div>
+              </div>
 
-                {/* Product details */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-gray-200 leading-snug mb-1.5 group-hover:text-amber-300 transition-colors line-clamp-2">
-                    {rec.name}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    {/* Stars */}
-                    <div className="flex items-center gap-1">
-                      <div className="flex gap-px">
-                        {[1, 2, 3, 4, 5].map(s => (
-                          <Star key={s} className="h-2.5 w-2.5"
-                            style={{ color: s <= Math.round(rec.rating) ? "#f59e0b" : "rgba(255,255,255,0.1)", fill: s <= Math.round(rec.rating) ? "#f59e0b" : "transparent" }} />
-                        ))}
-                      </div>
-                      <span className="text-[11px] font-semibold text-amber-400">{rec.rating}</span>
-                      <span className="text-[10px] text-gray-600">({rec.reviewCount})</span>
+              {/* Product details */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-gray-200 leading-snug mb-1.5 group-hover:text-amber-300 transition-colors line-clamp-2">
+                  {rec.name}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  {/* Stars */}
+                  <div className="flex items-center gap-1">
+                    <div className="flex gap-px">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} className="h-2.5 w-2.5"
+                          style={{ color: s <= Math.round(rec.rating) ? "#f59e0b" : "rgba(255,255,255,0.1)", fill: s <= Math.round(rec.rating) ? "#f59e0b" : "transparent" }} />
+                      ))}
                     </div>
-                    {/* Price pill */}
-                    <span className="text-xs font-bold text-green-400 px-1.5 py-0.5 rounded-md"
-                      style={{ background: "rgba(34,197,94,0.08)" }}>
-                      {rec.estimatedPrice}
-                    </span>
+                    <span className="text-[11px] font-semibold text-amber-400">{rec.rating}</span>
+                    <span className="text-[10px] text-gray-600">({rec.reviewCount})</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1 line-clamp-1">{rec.whyBuy}</p>
+                  {/* Price pill */}
+                  <span className="text-xs font-bold text-green-400 px-1.5 py-0.5 rounded-md"
+                    style={{ background: "rgba(34,197,94,0.08)" }}>
+                    {rec.estimatedPrice}
+                  </span>
+                  {/* Badges */}
+                  {rec.isPrime && (
+                    <span className="text-[10px] font-medium text-blue-400 px-1.5 py-0.5 rounded-md"
+                      style={{ background: "rgba(59,130,246,0.08)" }}>
+                      Prime
+                    </span>
+                  )}
+                  {rec.isBestSeller && (
+                    <span className="text-[10px] font-medium text-orange-400 px-1.5 py-0.5 rounded-md"
+                      style={{ background: "rgba(249,115,22,0.08)" }}>
+                      Best Seller
+                    </span>
+                  )}
                 </div>
+                <p className="text-[11px] text-gray-500 mt-1 line-clamp-1">{rec.whyBuy}</p>
+              </div>
 
-                {/* CTA arrow */}
-                <div className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all group-hover:bg-amber-500/10"
-                  style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <ExternalLink className="h-3.5 w-3.5 text-gray-600 group-hover:text-amber-400 transition-colors" />
-                </div>
-              </a>
-            );
-          })}
+              {/* CTA arrow */}
+              <div className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all group-hover:bg-amber-500/10"
+                style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                <ExternalLink className="h-3.5 w-3.5 text-gray-600 group-hover:text-amber-400 transition-colors" />
+              </div>
+            </a>
+          ))}
         </div>
 
         {/* Footer */}
@@ -1097,6 +1387,20 @@ export default function ReportPage() {
           </motion.div>
         )}
 
+        {/* ── DROPSHIP RISK (US market) ─────────────────────────────────── */}
+        {(() => {
+          const risk = (report as unknown as { dropshipRisk?: { markupScore: number; level: "low" | "medium" | "high" | "critical"; storePriceUsd: number | null; aliMedianPriceUsd: number | null; markupMultiplier: number | null; evidence: string[]; recommendation: string } }).dropshipRisk;
+          if (!risk) return null;
+          return <DropshipRiskCard risk={risk} />;
+        })()}
+
+        {/* ── LANDED COST (US) ──────────────────────────────────────────── */}
+        {(() => {
+          const cost = (report as unknown as { landedCost?: { productPriceUsd: number; estimatedShippingUsd: number; estimatedDutyUsd: number; totalUsd: number; shippingTimeText: string; afterSalesRisk: "low" | "medium" | "high"; note: string } }).landedCost;
+          if (!cost) return null;
+          return <LandedCostCard cost={cost} />;
+        })()}
+
         {/* ── PRODUCT INTELLIGENCE ─────────────────────────────────────── */}
         {report.productIntel && report.productIntel.pageType !== "unknown" && (
           <ProductIntelCard intel={report.productIntel} />
@@ -1236,10 +1540,19 @@ export default function ReportPage() {
 
         {/* ── AMAZON RECOMMENDATIONS ─────────────────────────────────────── */}
         {(() => {
-          const recs = (report as unknown as { amazonRecommendations?: { name: string; estimatedPrice: string; rating: number; reviewCount: string; whyBuy: string; searchUrl: string }[] }).amazonRecommendations;
+          const recs = (report as unknown as { amazonRecommendations?: { name: string; estimatedPrice: string; rating: number; reviewCount: string; whyBuy: string; searchUrl: string; asin?: string; productUrl?: string; imageUrl?: string; isPrime?: boolean; isBestSeller?: boolean; source?: "amazon-live" | "ai-estimated" }[] }).amazonRecommendations;
           if (!recs || recs.length === 0) return null;
           return (
             <AmazonRecommendations recommendations={recs} />
+          );
+        })()}
+
+        {/* ── ALIEXPRESS RECOMMENDATIONS ─────────────────────────────────── */}
+        {(() => {
+          const recs = (report as unknown as { aliexpressRecommendations?: { productId: string; name: string; price: string; priceNumeric: number; rating: number | null; ordersText: string; imageUrl: string | null; productUrl: string }[] }).aliexpressRecommendations;
+          if (!recs || recs.length === 0) return null;
+          return (
+            <AliExpressRecommendations recommendations={recs} />
           );
         })()}
 

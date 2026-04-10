@@ -70,6 +70,7 @@ export interface DeepProductIntel {
   onPageReviewCount: number | null;
   funnelSignals: string[];
   searchKeywords: string[];
+  amazonSearchKeyword: string | null;
 }
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
@@ -185,7 +186,8 @@ export interface Report {
   reviewPlatforms: string[];
 
   // Amazon recommendations
-  amazonRecommendations?: { name: string; estimatedPrice: string; rating: number; reviewCount: string; whyBuy: string; searchUrl: string }[];
+  amazonRecommendations?: { name: string; estimatedPrice: string; rating: number; reviewCount: string; whyBuy: string; searchUrl: string; asin?: string; productUrl?: string; imageUrl?: string; isPrime?: boolean; isBestSeller?: boolean; source?: "amazon-live" | "ai-estimated" }[];
+  aliexpressRecommendations?: { productId: string; name: string; price: string; priceNumeric: number; rating: number | null; ordersText: string; imageUrl: string | null; productUrl: string }[];
 
   // Community data
   communityReports?: { count: number; snippets: string[] };
@@ -193,6 +195,28 @@ export interface Report {
   // Risk signals
   nonDeliveryRisk: boolean;
   scamPatterns: string[];
+
+  // Dropship Risk Analysis (US market)
+  dropshipRisk?: {
+    markupScore: number;            // 0-100 (higher = more suspicious markup)
+    level: "low" | "medium" | "high" | "critical";
+    storePriceUsd: number | null;
+    aliMedianPriceUsd: number | null;
+    markupMultiplier: number | null;  // store / ali median
+    evidence: string[];              // human-readable bullet points
+    recommendation: string;          // concrete action for the user
+  };
+
+  // Landed Cost (price + shipping + import duty estimate for US buyers)
+  landedCost?: {
+    productPriceUsd: number;
+    estimatedShippingUsd: number;
+    estimatedDutyUsd: number;       // US de minimis is $800, usually 0
+    totalUsd: number;
+    shippingTimeText: string;       // "2-4 weeks (international)"
+    afterSalesRisk: "low" | "medium" | "high";
+    note: string;
+  };
 
   // Deep Product Intelligence
   productIntel?: DeepProductIntel;

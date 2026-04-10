@@ -2,7 +2,9 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ScrapedData, Verdict, RiskLevel, ReviewConfidence, ScrapedProduct, PriceAnalysis, DeepProductIntel, PageProductType } from "./types";
 import { VERDICT_THRESHOLDS } from "./scoring";
-import { appendAmazonAffiliateTag } from "./affiliate";
+import { appendAmazonAffiliateTag, appendAliExpressAffiliateTag } from "./affiliate";
+import { scrapeAmazonSearch, rankAndFilterAmazonResults, formatReviewCount, generateWhyBuy } from "./amazon";
+import { scrapeAliSearch, rankAndFilterAliResults, type ScrapedAliProduct } from "./aliexpress";
 
 // OpenAI — vision/price analysis only
 let _openai: OpenAI | null = null;
@@ -269,13 +271,15 @@ Return JSON:
   "onPageRating": 4.4,
   "onPageReviewCount": 283,
   "funnelSignals": ["Free Returns", "Free Shipping over $75"],
-  "searchKeywords": ["obagi vitamin c serum mini", "brightening skincare set"]
+  "searchKeywords": ["obagi vitamin c serum mini", "brightening skincare set"],
+  "amazonSearchKeyword": "vitamin c brightening serum"
 }
 
 Rules:
 - bundleComponents ONLY if pageType is "bundle_kit" — list each item in the bundle
 - ingredients ONLY for skincare/health/beauty products
 - searchKeywords: 2-4 specific search terms a shopper would use on Amazon to find similar products
+- amazonSearchKeyword: ONE short Amazon search keyword (2-4 words) for the CORE product type only. Strip all marketing fluff, brand names, and generic adjectives. Focus on what the product IS, not what it claims to be. Examples: "car vacuum cleaner" (not "portable cordless high power vacuum"), "vitamin c serum" (not "brightening anti-aging hydrating serum"), "dog nail grinder" (not "professional pet grooming tool")
 - Prices must be numeric (no $ symbol), null if unknown
 - Keep arrays concise (max 5 items each except bundleComponents)`,
       }],
@@ -312,6 +316,7 @@ Rules:
       onPageReviewCount: typeof raw.onPageReviewCount === "number" ? raw.onPageReviewCount : null,
       funnelSignals: Array.isArray(raw.funnelSignals) ? raw.funnelSignals.slice(0, 6).map(String) : [],
       searchKeywords: Array.isArray(raw.searchKeywords) ? raw.searchKeywords.slice(0, 4).map(String) : [],
+      amazonSearchKeyword: typeof raw.amazonSearchKeyword === "string" ? String(raw.amazonSearchKeyword).slice(0, 80) : null,
     };
   } catch (err) {
     console.error("Product intel extraction failed:", err);
@@ -327,7 +332,54 @@ export interface AmazonRecommendation {
   rating: number;
   reviewCount: string;
   whyBuy: string;
-  searchUrl: string;
+  searchUrl: string;          // kept for backward compat
+  asin?: string;
+  productUrl?: string;        // direct /dp/ link
+  imageUrl?: string;
+  isPrime?: boolean;
+  isBestSeller?: boolean;
+  source: "amazon-live" | "ai-estimated";
+}
+
+export interface AliExpressRecommendation {
+  productId: string;
+  name: string;
+  price: string;              // formatted "$X.XX"
+  priceNumeric: number;
+  rating: number | null;
+  ordersText: string;         // "50,000+ sold"
+  imageUrl: string | null;
+  productUrl: string;         // direct aliexpress.com/item/X.html
+}
+
+function resolveAmazonKeyword(
+  intel: DeepProductIntel | null | undefined,
+  products: { name: string }[],
+  storeContext?: { pageTitle?: string; ogDescription?: string },
+): string | null {
+  if (intel?.amazonSearchKeyword) return intel.amazonSearchKeyword;
+  if (intel?.searchKeywords?.[0]) return intel.searchKeywords[0];
+  if (intel?.productName && intel.productName.length > 3) return intel.productName.slice(0, 60);
+  if (products.length > 0 && products[0].name.length > 3) return products[0].name.slice(0, 60);
+  if (storeContext?.pageTitle) return storeContext.pageTitle.split(/[|\-–—]/)[0].trim().slice(0, 60);
+  return null;
+}
+
+function mapScrapedToRecs(ranked: ReturnType<typeof rankAndFilterAmazonResults>): AmazonRecommendation[] {
+  return ranked.map(p => ({
+    name: p.name,
+    estimatedPrice: p.priceFormatted,
+    rating: p.rating ?? 4.5,
+    reviewCount: formatReviewCount(p.reviewCount),
+    whyBuy: generateWhyBuy(p),
+    searchUrl: p.productUrl,
+    asin: p.asin,
+    productUrl: p.productUrl,
+    imageUrl: p.imageUrl ?? undefined,
+    isPrime: p.isPrime,
+    isBestSeller: p.isBestSeller,
+    source: "amazon-live" as const,
+  }));
 }
 
 export async function getAmazonRecommendations(
@@ -335,94 +387,94 @@ export async function getAmazonRecommendations(
   storeDomain: string,
   storeContext?: { pageTitle?: string; ogDescription?: string },
   intel?: DeepProductIntel | null,
+  country: string = "US",
 ): Promise<AmazonRecommendation[]> {
-  // Build context — use deep intel when available for much better recommendations
-  let storeDescription: string;
-  if (intel && intel.pageType !== "unknown") {
-    const keywords = intel.searchKeywords.join(", ");
-    const components = intel.bundleComponents.length > 0
-      ? ` Bundle includes: ${intel.bundleComponents.map(c => c.name).join(", ")}.`
-      : "";
-    const concerns = intel.targetConcerns.length > 0 ? ` Targets: ${intel.targetConcerns.join(", ")}.` : "";
-    storeDescription = `${intel.brand || ""} ${intel.productName} (${intel.category}). Keywords: ${keywords}.${components}${concerns}`.trim();
-  } else if (products.length > 0) {
-    storeDescription = `Products on ${storeDomain}: ${products.slice(0, 4).map(p => p.name).join(", ")}`;
-  } else if (storeContext?.pageTitle || storeContext?.ogDescription) {
-    storeDescription = `Store ${storeDomain} — "${storeContext.pageTitle || ""}" — ${storeContext.ogDescription || ""}`.slice(0, 300);
-  } else {
-    return []; // No products AND no page context — can't recommend
+  void storeDomain; // kept for backward-compatible signature
+  const keyword = resolveAmazonKeyword(intel, products, storeContext);
+  if (!keyword) return [];
+
+  const storePrice = intel?.currentPrice ?? null;
+
+  // Tier 1: scrape Amazon with precise keyword
+  const scraped = await scrapeAmazonSearch(keyword, 15, country);
+  if (scraped.length > 0) {
+    const ranked = rankAndFilterAmazonResults(scraped, storePrice, 5);
+    if (ranked.length >= 2) return mapScrapedToRecs(ranked);
   }
 
-  try {
-    const response = await getOpenAI().chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{
-        role: "user",
-        content: `A shopper is browsing: ${storeDescription}
-
-Find 5-7 REAL popular Amazon bestseller alternatives that are SPECIFICALLY related to the products this store sells.
-Only include products that:
-- Are actual bestsellers or highly popular on Amazon USA
-- Have 4.4+ star rating with substantial review counts (500+ reviews)
-- Are from well-known or trusted brands
-- Are genuinely similar or related to the store's product category
-
-Return this JSON object (root must be an object with "recommendations" key):
-{
-  "recommendations": [
-    {
-      "name": "Full product name as it would appear on Amazon (brand + product name)",
-      "estimatedPrice": "$XX.XX",
-      "rating": 4.7,
-      "reviewCount": "12K+",
-      "whyBuy": "One short punchy sentence — why this is a great pick (e.g. 'Amazon's Choice with 50K+ rave reviews' or '#1 best-seller, dermatologist-approved')"
+  // Tier 2: fallback with category keyword (broader)
+  if (intel?.category && intel.category !== "General") {
+    const fallbackKeyword = intel.category.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+    if (fallbackKeyword && fallbackKeyword !== keyword.toLowerCase()) {
+      const fallbackScraped = await scrapeAmazonSearch(fallbackKeyword, 15, country);
+      if (fallbackScraped.length > 0) {
+        const ranked = rankAndFilterAmazonResults(fallbackScraped, storePrice, 5);
+        if (ranked.length >= 2) return mapScrapedToRecs(ranked);
+      }
     }
-  ]
+  }
+
+  // No AI hallucination fallback — if scrape fails, return empty (UI will hide section)
+  return [];
 }
 
-IMPORTANT:
-- Use REAL product names that actually exist on Amazon — do not invent products
-- Include the brand name (e.g. "Olaplex No.3 Hair Perfector" not just "Hair Perfector")
-- Rating must be 4.4 or higher
-- reviewCount format: "1.2K+", "50K+", "890+"
-- Keep whyBuy under 15 words, make it punchy and compelling
-- Products must be genuinely relevant alternatives in the SAME category, not random items
-- Vary the price range — include both budget-friendly and premium options`,
-      }],
-      max_tokens: 700,
-      response_format: { type: "json_object" },
-    });
+// ─── AliExpress Recommendations ─────────────────────────────────────────────
 
-    const raw = JSON.parse(response.choices[0]?.message?.content || "{}");
-    const items: AmazonRecommendation[] = (Array.isArray(raw) ? raw : raw.recommendations || raw.products || [])
-      .filter((item: Record<string, unknown>) =>
-        item.name && item.estimatedPrice && typeof item.rating === "number" && item.rating >= 4.4
-      )
-      .slice(0, 7)
-      .map((item: Record<string, unknown>) => {
-        const searchTerm = encodeURIComponent(String(item.name));
-        const tag = process.env.AMAZON_AFFILIATE_TAG;
-        const tagSuffix = tag ? `&tag=${tag}` : "";
-        return {
-          name: String(item.name).slice(0, 120),
-          estimatedPrice: String(item.estimatedPrice),
-          rating: Number(item.rating),
-          reviewCount: String(item.reviewCount || "500+"),
-          whyBuy: String(item.whyBuy || "").slice(0, 100),
-          searchUrl: `https://www.amazon.com/s?k=${searchTerm}${tagSuffix}`,
-        };
-      });
+export async function getAliExpressRecommendations(
+  intel?: DeepProductIntel | null,
+  storeContext?: { pageTitle?: string },
+  country: string = "US",
+): Promise<AliExpressRecommendation[]> {
+  // Use the same keyword resolution as Amazon (AI-cleaned short keyword)
+  const keyword = intel?.amazonSearchKeyword
+    || intel?.searchKeywords?.[0]
+    || (intel?.productName && intel.productName.length > 3 ? intel.productName.slice(0, 60) : null)
+    || (storeContext?.pageTitle ? storeContext.pageTitle.split(/[|\-–—]/)[0].trim().slice(0, 60) : null);
+  if (!keyword) return [];
 
-    return items;
-  } catch (err) {
-    console.error("Amazon recommendations failed:", err);
-    return [];
+  const storePrice = intel?.currentPrice ?? null;
+
+  // Tier 1: precise keyword
+  const scraped = await scrapeAliSearch(keyword, 15, country);
+  if (scraped.length > 0) {
+    const ranked = rankAndFilterAliResults(scraped, storePrice, 5);
+    if (ranked.length >= 2) return mapAliToRecs(ranked);
   }
+
+  // Tier 2: category keyword fallback
+  if (intel?.category && intel.category !== "General") {
+    const fallbackKeyword = intel.category.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+    if (fallbackKeyword && fallbackKeyword !== keyword.toLowerCase()) {
+      const fallbackScraped = await scrapeAliSearch(fallbackKeyword, 15, country);
+      if (fallbackScraped.length > 0) {
+        const ranked = rankAndFilterAliResults(fallbackScraped, storePrice, 5);
+        if (ranked.length >= 2) return mapAliToRecs(ranked);
+      }
+    }
+  }
+
+  return [];
+}
+
+function mapAliToRecs(products: ScrapedAliProduct[]): AliExpressRecommendation[] {
+  return products.map(p => ({
+    productId: p.productId,
+    name: p.title,
+    price: p.priceFormatted,
+    priceNumeric: p.price ?? 0,
+    rating: p.rating,
+    ordersText: p.ordersText,
+    imageUrl: p.imageUrl,
+    productUrl: p.productUrl,
+  }));
 }
 
 // ─── GPT-4o Vision price analysis ───────────────────────────────────────────
 
-async function analyzeSingleProductPrice(product: ScrapedProduct): Promise<PriceAnalysis | null> {
+async function analyzeSingleProductPrice(
+  product: ScrapedProduct,
+  cleanKeyword: string | null = null,
+): Promise<PriceAnalysis | null> {
   if (!product.image?.startsWith("http") || !product.price) return null;
 
   const priceLabel = product.priceUsd != null
@@ -499,7 +551,24 @@ Verdict rules:
 
   if (!isExact && verdict === "marked_up") verdict = "overpriced";
 
-  const searchTerm = encodeURIComponent(raw.identifiedAs || product.name);
+  // Prefer AI-extracted clean keyword (3-5 words from intel.amazonSearchKeyword)
+  // over raw.identifiedAs or product.name (both tend to be verbose brand-specific phrases
+  // that return zero results on marketplaces)
+  const searchQueryRaw = cleanKeyword || raw.identifiedAs || product.name;
+  const searchTerm = encodeURIComponent(searchQueryRaw);
+
+  // Build Amazon price filter based on store price (0.3x - 2.5x range)
+  // Amazon format: rh=p_36:minCents-maxCents (e.g. $40 = "4000")
+  const priceUsd = product.priceUsd ?? product.priceNumeric ?? null;
+  const amazonPriceFilter = priceUsd
+    ? `&rh=p_36%3A${Math.round(priceUsd * 0.3 * 100)}-${Math.round(priceUsd * 2.5 * 100)}`
+    : "";
+
+  // AliExpress price filter: &minPrice=X&maxPrice=Y (whole dollars)
+  // Sort by total orders (total_tranpro_desc) — best selling first
+  const aliPriceFilter = priceUsd
+    ? `&minPrice=${Math.max(1, Math.floor(priceUsd * 0.3))}&maxPrice=${Math.ceil(priceUsd * 2.5)}`
+    : "";
 
   return {
     productName: product.name,
@@ -515,10 +584,14 @@ Verdict rules:
     googleLensUrl: product.image
       ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}`
       : null,
-    amazonSearchUrl: appendAmazonAffiliateTag(`https://www.amazon.com/s?k=${searchTerm}`),
-    aliexpressSearchUrl: product.image
-      ? `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(product.image)}&hl=en`
-      : `https://www.aliexpress.com/wholesale?SearchText=${searchTerm}`,
+    // Amazon search: clean keyword + price filter + sort by review rank + affiliate tag
+    amazonSearchUrl: appendAmazonAffiliateTag(
+      `https://www.amazon.com/s?k=${searchTerm}${amazonPriceFilter}&s=review-rank`
+    ),
+    // AliExpress search: clean keyword + price filter + sort by orders + affiliate tag
+    aliexpressSearchUrl: appendAliExpressAffiliateTag(
+      `https://www.aliexpress.com/w/wholesale-${searchTerm}.html?SortType=total_tranpro_desc${aliPriceFilter}`
+    ),
   };
 }
 
@@ -614,8 +687,12 @@ export async function analyzeMainProductPrice(
   const mainProduct = resolveMainProduct(intel, products, ogImage, url);
   if (!mainProduct) return [];
 
+  // Use AI-cleaned keyword (e.g. "car vacuum cleaner") for Price Check buttons
+  // instead of the full brand-specific product name (e.g. "Slim V8 Mate Cordless Car Vacuum High Power")
+  const cleanKeyword = intel?.amazonSearchKeyword || intel?.searchKeywords?.[0] || null;
+
   try {
-    const result = await analyzeSingleProductPrice(mainProduct);
+    const result = await analyzeSingleProductPrice(mainProduct, cleanKeyword);
     return result ? [result] : [];
   } catch (err) {
     console.error("Main product price analysis failed:", err);

@@ -5,7 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { scrapeStore } from "@/lib/scraper";
 import { calculateTrustScore, calculateReturnRisk } from "@/lib/scoring";
-import { analyzeWithAI, analyzeMainProductPrice, getAmazonRecommendations, extractProductIntel } from "@/lib/analyze";
+import { analyzeWithAI, analyzeMainProductPrice, getAmazonRecommendations, getAliExpressRecommendations, extractProductIntel } from "@/lib/analyze";
+import { detectDropshipRisk, estimateLandedCost } from "@/lib/dropship-detection";
+import { detectUserCountry } from "@/lib/user-country";
 import { saveReport, saveAnalysisFailure } from "@/lib/store";
 import { verifySession, findUserById } from "@/lib/auth";
 import { useCheck, addChecks, PLAN_FEATURES, type PlanTier } from "@/lib/quota";
@@ -176,20 +178,40 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
 
     const productIntel = analysisCache.get(domain)?.productIntel ?? null;
 
-    // ── 6. Price analysis (plan-gated) + Amazon recommendations (with intel) ──
-    const [priceAnalysis, amazonRecs] = await Promise.all([
+    // Detect buyer country from request headers (Cloudflare/Vercel/Accept-Language)
+    // Used to localize Amazon/AliExpress ship-to + landed cost calculation
+    const userCountry = detectUserCountry(req);
+
+    // ── 6. Price analysis + Amazon/AliExpress recommendations (parallel) ──
+    const [priceAnalysis, amazonRecs, aliRecs] = await Promise.all([
       planFeatures.priceAnalysis ? analyzeMainProductPrice(productIntel, scraped.products, scraped.ogImage, url) : Promise.resolve([]),
       getAmazonRecommendations(
         scraped.products, domain,
         { pageTitle: scraped.pageTitle, ogDescription: scraped.ogDescription ?? undefined },
         productIntel,
+        userCountry,
       ).catch(err => { console.error("Amazon recs failed:", err); return []; }),
+      getAliExpressRecommendations(
+        productIntel,
+        { pageTitle: scraped.pageTitle },
+        userCountry,
+      ).catch(err => { console.error("AliExpress recs failed:", err); return []; }),
     ]);
 
     // ── 7. Community scam reports ───────────────────────────────────────────
     const communityReports = await getDomainScamSummary(domain).catch(() => ({ count: 0, snippets: [] }));
 
-    const finalTrustScore = Math.min(100, Math.max(0, rawScore + ai.trustScoreAdjustment));
+    // ── 7b. Dropship risk + landed cost (localized per user country) ───────
+    const dropshipRisk = detectDropshipRisk(productIntel, aliRecs, amazonRecs, scraped) ?? undefined;
+    const landedCost = estimateLandedCost(productIntel, scraped, userCountry) ?? undefined;
+
+    // If dropshipRisk is critical/high, bump trustScore penalty
+    let dropshipPenalty = 0;
+    if (dropshipRisk?.level === "critical") dropshipPenalty = -15;
+    else if (dropshipRisk?.level === "high") dropshipPenalty = -10;
+    else if (dropshipRisk?.level === "medium") dropshipPenalty = -5;
+
+    const finalTrustScore = Math.min(100, Math.max(0, rawScore + ai.trustScoreAdjustment + dropshipPenalty));
 
     // ── 8. Assemble report (gate by plan) ────────────────────────────────────
     const id = nanoid(10);
@@ -223,6 +245,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       products:      scraped.products,
       priceAnalysis: planFeatures.priceAnalysis ? priceAnalysis : [],
       amazonRecommendations: amazonRecs.length > 0 ? amazonRecs : undefined,
+      aliexpressRecommendations: aliRecs.length > 0 ? aliRecs : undefined,
+      dropshipRisk,
+      landedCost,
 
       paymentMethods:       planFeatures.fullReport ? scraped.paymentMethods       : [],
       shippingOriginSignals: planFeatures.fullReport ? scraped.shippingOriginSignals : [],
@@ -246,9 +271,20 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
       scrapeError:   scraped.scrapeError,
     };
 
-    // ── 9. Persist (only if plan supports history) ───────────────────────────
-    if (planFeatures.savedHistory) {
+    // ── 9. Persist report ─────────────────────────────────────────────────
+    // ALWAYS save — otherwise the /report/{id} page 404s and the user loses
+    // their quota without seeing results. `savedHistory` plan flag only
+    // controls whether userId is attached (for dashboard history listing).
+    try {
       await saveReport(report);
+    } catch (saveErr) {
+      // If save fails, refund the check — user should not lose quota
+      console.error("saveReport failed:", saveErr);
+      if (checkConsumed && refundUserId) {
+        await addChecks(refundUserId, 1).catch(() => {});
+        checkConsumed = false;
+      }
+      throw saveErr; // propagate to outer catch → 500 response
     }
 
     // Fire-and-forget check-complete email
