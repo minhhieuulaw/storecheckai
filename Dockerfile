@@ -30,6 +30,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Install curl — required by lib/amazon.ts and lib/aliexpress.ts
+# which spawn curl subprocess to bypass TLS fingerprinting on marketplace scrapes.
+# ca-certificates needed for HTTPS cert validation
+RUN apk add --no-cache curl ca-certificates
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser  --system --uid 1001 nextjs
 
