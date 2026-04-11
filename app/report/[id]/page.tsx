@@ -21,6 +21,10 @@ import { FinalTake } from "@/components/report/guidance/FinalTake";
 import { ReportNavbar } from "@/components/report/layout/ReportNavbar";
 import { ReportFooter } from "@/components/report/layout/ReportFooter";
 import { MobileStickyVerdictBar } from "@/components/report/layout/MobileStickyVerdictBar";
+import { PartialDataWarning } from "@/components/report/status/PartialDataWarning";
+import { BlacklistWarning } from "@/components/report/status/BlacklistWarning";
+import { NonDeliveryRiskWarning } from "@/components/report/status/NonDeliveryRiskWarning";
+import { StoreHero } from "@/components/report/hero/StoreHero";
 
 // ─── Motion presets ───────────────────────────────────────────────────────────
 const EASE = [0.4, 0, 0.2, 1] as const;
@@ -922,115 +926,21 @@ export default function ReportPage() {
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
 
         {/* ── PARTIAL DATA WARNING ────────────────────────────────────────── */}
-        {report.isPartialData && (
-          <motion.div {...fadeUp} className="mb-4 rounded-2xl px-5 py-3.5"
-            style={{ background: "rgba(251,146,60,0.06)", border: "1px solid rgba(251,146,60,0.22)" }}>
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-4 w-4 text-orange-400 shrink-0" />
-              <p className="text-xs text-orange-300 leading-relaxed">
-                Some data could not be retrieved from this store (the site may block automated requests).
-                Results may be incomplete.
-              </p>
-            </div>
-          </motion.div>
-        )}
+        {report.isPartialData && <PartialDataWarning />}
 
         {/* ── BLACKLIST WARNING ───────────────────────────────────────────── */}
-        {scamWarnings.length > 0 && (
-          <motion.div {...fadeUp} className="mb-5 rounded-2xl px-5 py-4"
-            style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.3)" }}>
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-red-300 mb-1">
-                  ⚠️ This store has been reported as a scam by {scamWarnings.length} user{scamWarnings.length > 1 ? "s" : ""}
-                </p>
-                <ul className="space-y-1.5 mt-2">
-                  {scamWarnings.map(w => (
-                    <li key={w.id} className="text-xs text-gray-400 leading-relaxed border-l-2 pl-3"
-                      style={{ borderColor: "rgba(239,68,68,0.4)" }}>
-                      &ldquo;{w.content.slice(0, 120)}{w.content.length > 120 ? "…" : ""}&rdquo;
-                      <span className="ml-2 text-gray-600">{new Date(w.createdAt).toLocaleDateString()}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        <BlacklistWarning warnings={scamWarnings} />
 
         {/* ── NON-DELIVERY RISK WARNING ───────────────────────────────────── */}
-        {report.nonDeliveryRisk && (
-          <motion.div {...fadeUp} className="mb-5 rounded-2xl px-5 py-4"
-            style={{ background: "rgba(239,68,68,0.09)", border: "1px solid rgba(239,68,68,0.35)" }}>
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-red-300 mb-1">
-                  Non-delivery risk detected
-                </p>
-                <p className="text-xs text-red-400/80 mb-2">
-                  Customer reviews contain patterns indicating orders may not be fulfilled or refunds refused.
-                </p>
-                {report.scamPatterns && report.scamPatterns.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {report.scamPatterns.map((p, i) => (
-                      <span key={i} className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
-                        style={{ background: "rgba(239,68,68,0.15)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.25)" }}>
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
+        <NonDeliveryRiskWarning show={!!report.nonDeliveryRisk} scamPatterns={report.scamPatterns} />
 
         {/* ── STORE HERO ──────────────────────────────────────────────────── */}
-        <motion.div {...fadeUp} className="mb-4 rounded-2xl overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-
-          {/* Top accent line */}
-          <div className="h-px w-full" style={{ background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.5) 40%, rgba(139,92,246,0.5) 60%, transparent)" }} />
-
-          <div className="flex items-center gap-4 px-5 py-5">
-            {/* Logo with glow */}
-            <div className="relative shrink-0">
-              <div className="absolute -inset-2 rounded-2xl blur-lg opacity-25"
-                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }} />
-              <div className="relative h-14 w-14 rounded-2xl flex items-center justify-center overflow-hidden"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://www.google.com/s2/favicons?domain=${report.domain}&sz=64`}
-                  alt="" width={36} height={36} className="rounded-lg"
-                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-              </div>
-            </div>
-
-            {/* Store info */}
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-bold text-white leading-tight truncate">{report.storeName}</h1>
-              <a href={report.url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 mt-1 text-xs text-gray-500 hover:text-indigo-400 transition-colors group">
-                <ExternalLink className="h-3 w-3 shrink-0" />
-                <span className="truncate group-hover:underline underline-offset-2">{report.domain}</span>
-              </a>
-            </div>
-
-            {/* Analyzed badge */}
-            <div className="shrink-0">
-              <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
-                style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.18)" }}>
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />
-                <span className="text-[11px] font-medium text-indigo-300">
-                  {new Date(report.analyzedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        <StoreHero
+          storeName={report.storeName}
+          url={report.url}
+          domain={report.domain}
+          analyzedAt={report.analyzedAt}
+        />
 
         {/* ── VERDICT BANNER ──────────────────────────────────────────────── */}
         <motion.div
