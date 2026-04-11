@@ -570,6 +570,35 @@ function mapAliToRecs(products: ScrapedAliProduct[]): AliExpressRecommendation[]
 
 // ─── GPT-4o Vision price analysis ───────────────────────────────────────────
 
+interface AliLivePriceRange {
+  min: number;
+  max: number;
+  formatted: string;
+  sampleCount: number;
+}
+
+/**
+ * Compute a p25-p75 interquartile price range from top-ranked AliExpress products.
+ * Uses rankAndFilterAliResults to drop low-quality outliers first (min 100 orders, rating ≥3.5),
+ * then returns the interquartile range of the remaining sale prices.
+ */
+function extractAliPriceRange(products: ScrapedAliProduct[]): AliLivePriceRange | null {
+  const ranked = rankAndFilterAliResults(products, null, 10);
+  const prices = ranked.map(p => p.price ?? 0).filter(p => p > 0).sort((a, b) => a - b);
+  if (prices.length < 2) return null;
+  const p25Index = Math.floor(prices.length * 0.25);
+  const p75Index = Math.min(prices.length - 1, Math.floor(prices.length * 0.75));
+  const min = prices[p25Index];
+  const max = prices[p75Index];
+  const fmt = (n: number) => (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`);
+  return {
+    min,
+    max,
+    formatted: min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`,
+    sampleCount: prices.length,
+  };
+}
+
 async function analyzeSingleProductPrice(
   product: ScrapedProduct,
   cleanKeyword: string | null = null,
@@ -580,7 +609,19 @@ async function analyzeSingleProductPrice(
     ? `$${product.priceUsd} USD (converted from ${product.price})`
     : product.price;
 
-  const response = await getOpenAI().chat.completions.create({
+  // Fire AliExpress live-price lookup in parallel with the Vision call.
+  // scrapeAliSearch has its own 5-min cache keyed by "US:keyword" — if
+  // getAliExpressRecommendations already ran for the same keyword, this is free.
+  const aliLivePromise: Promise<AliLivePriceRange | null> = cleanKeyword && cleanKeyword.length >= 3
+    ? scrapeAliSearch(cleanKeyword, 15, "US")
+        .then(extractAliPriceRange)
+        .catch(err => {
+          console.warn("AliExpress live price lookup failed:", err instanceof Error ? err.message : err);
+          return null;
+        })
+    : Promise.resolve(null);
+
+  const visionPromise = getOpenAI().chat.completions.create({
     model: "gpt-4o",
     messages: [{
       role: "user",
@@ -629,6 +670,8 @@ Verdict rules:
     response_format: { type: "json_object" },
   });
 
+  const [response, aliLivePrice] = await Promise.all([visionPromise, aliLivePromise]);
+
   const raw = JSON.parse(response.choices[0]?.message?.content || "{}") as {
     isPhysicalProduct?: boolean;
     identifiedAs?: string;
@@ -669,13 +712,20 @@ Verdict rules:
     ? `&minPrice=${Math.max(1, Math.floor(priceUsd * 0.3))}&maxPrice=${Math.ceil(priceUsd * 2.5)}`
     : "";
 
+  // Prefer the live Official-API range when available; fall back to Vision estimate.
+  const aliexpressPrice = aliLivePrice?.formatted ?? raw.aliexpressPrice ?? null;
+  const aliexpressPriceSource: PriceAnalysis["aliexpressPriceSource"] = aliLivePrice ? "live" : "estimate";
+  const aliexpressSampleCount = aliLivePrice?.sampleCount ?? 0;
+
   return {
     productName: product.name,
     storePrice: product.priceUsd != null ? `$${product.priceUsd}` : (product.price ?? "Unknown"),
     identifiedAs: raw.identifiedAs || product.name,
     exactMatch: isExact,
     estimatedMarketPrice: raw.amazonPrice || "Unknown",
-    aliexpressPrice: raw.aliexpressPrice || null,
+    aliexpressPrice,
+    aliexpressPriceSource,
+    aliexpressSampleCount,
     markupNote: isExact ? (raw.markupNote || null) : null,
     priceVerdict: verdict,
     explanation: raw.explanation || "",

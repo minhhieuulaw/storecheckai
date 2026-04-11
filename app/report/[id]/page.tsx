@@ -1490,11 +1490,26 @@ export default function ReportPage() {
                             <span className="text-sm font-semibold" style={{ color: pvc.color }}>{item.estimatedMarketPrice}</span>
                           </div>
                           {item.aliexpressPrice && (
-                            <div className="flex items-baseline gap-1">
+                            <div className="flex items-baseline gap-1.5">
                               <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wider">
                                 {isExact ? "AliExpress" : "AliExpress (similar)"}
                               </span>
                               <span className="text-sm font-semibold text-gray-500">{item.aliexpressPrice}</span>
+                              {item.aliexpressPriceSource === "live" ? (
+                                <span
+                                  className="inline-flex items-center gap-0.5 rounded px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wider"
+                                  title={`Live price sampled from ${item.aliexpressSampleCount} AliExpress products via Official API`}
+                                  style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.32)", color: "#34d399" }}>
+                                  ● Live
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center rounded px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wider"
+                                  title="AI estimate from GPT-4o Vision based on similar products — not a live scrape. Actual prices may differ."
+                                  style={{ background: "rgba(251,146,60,0.10)", border: "1px solid rgba(251,146,60,0.30)", color: "#fdba74" }}>
+                                  AI Est.
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>

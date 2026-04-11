@@ -18,6 +18,8 @@ export interface PriceAnalysis {
   exactMatch: boolean;           // true = same product found, false = similar/comparable product
   estimatedMarketPrice: string;  // Amazon retail range (primary reference)
   aliexpressPrice: string | null; // AliExpress wholesale/dropship range
+  aliexpressPriceSource: "live" | "estimate"; // "live" = sampled from Official API, "estimate" = GPT-4o Vision guess
+  aliexpressSampleCount: number; // number of real AliExpress products sampled (0 when estimate)
   markupNote: string | null;     // e.g. "~2x Amazon price" (only when exactMatch)
   priceVerdict: PriceVerdict;
   explanation: string;
