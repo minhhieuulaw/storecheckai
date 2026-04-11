@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, XCircle, AlertTriangle, AlertCircle,
   ArrowLeft, Share2, ExternalLink, Star, ChevronDown, ChevronUp, ShoppingCart,
-  RotateCcw, CreditCard, Truck, Users, UserX, ShieldCheck, Tag, Shield, Package, Sparkles, Zap,
+  RotateCcw, CreditCard, Truck, ShieldCheck, Tag, Shield, Package, Sparkles, Zap,
 } from "lucide-react";
 import type { Report, RiskLevel, Verdict, StoreSignal, PriceVerdict, DeepProductIntel } from "@/lib/types";
 import FBAdChecker from "@/components/FBAdChecker";
@@ -14,6 +14,10 @@ import { SectionHeader } from "@/components/report/layout/SectionHeader";
 import { LockedSection } from "@/components/report/common/LockedSection";
 import { ErrorState } from "@/components/report/common/ErrorState";
 import { TrustpilotPanel } from "@/components/report/trust/TrustpilotPanel";
+import { ProsAndCons } from "@/components/report/guidance/ProsAndCons";
+import { ReturnPolicy } from "@/components/report/guidance/ReturnPolicy";
+import { WhoShouldBuyAvoid } from "@/components/report/guidance/WhoShouldBuyAvoid";
+import { FinalTake } from "@/components/report/guidance/FinalTake";
 
 // ─── Motion presets ───────────────────────────────────────────────────────────
 const EASE = [0.4, 0, 0.2, 1] as const;
@@ -1306,118 +1310,20 @@ export default function ReportPage() {
         })()}
 
         {/* ── PROS & CONS ─────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={viewportOnce}
-          transition={{ duration: 0.4 }}
-          className="mb-4">
-          <SectionHeader label="Assessment" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div
-              className="rounded-2xl p-5"
-              style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.1)" }}>
-              <p className="text-xs font-semibold text-green-400 mb-3 flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" /> What this store does well
-              </p>
-              {report.pros.length > 0 ? (
-                <ul className="space-y-2">
-                  {report.pros.slice(0, 4).map((p, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-500/60" />
-                      {p}
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="text-sm text-gray-600">No notable positives identified.</p>}
-            </div>
-            <div
-              className="rounded-2xl p-5"
-              style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.1)" }}>
-              <p className="text-xs font-semibold text-red-400 mb-3 flex items-center gap-1.5">
-                <XCircle className="h-3.5 w-3.5" /> Watch out for
-              </p>
-              {report.cons.length > 0 ? (
-                <ul className="space-y-2">
-                  {report.cons.slice(0, 4).map((c, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                      <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400/60" />
-                      {c}
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="text-sm text-gray-600">No notable negatives identified.</p>}
-            </div>
-          </div>
-        </motion.div>
+        <ProsAndCons pros={report.pros} cons={report.cons} />
 
         {/* ── RETURN POLICY ───────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={viewportOnce}
-          transition={{ duration: 0.4 }}
-          className="mb-4 rounded-2xl p-5"
-          style={{ background: "rgba(251,146,60,0.04)", border: "1px solid rgba(251,146,60,0.1)" }}>
-          <p className="text-xs font-semibold text-orange-400 mb-2.5 flex items-center gap-1.5">
-            <RotateCcw className="h-3.5 w-3.5" /> Return & Refund Policy
-          </p>
-          <p className="text-sm text-gray-300 leading-relaxed">{report.returnSummary}</p>
-        </motion.div>
+        <ReturnPolicy returnSummary={report.returnSummary} />
 
         {/* ── WHO SHOULD BUY / AVOID ──────────────────────────────────────── */}
-        {isBasicPlan && <LockedSection label="Who Should Buy / Avoid" />}
-        {!isBasicPlan && (report.whoShouldBuy || report.whoShouldAvoid) && (
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={viewportOnce}
-            transition={{ duration: 0.4 }}
-            className="mb-4">
-            <SectionHeader label="Who Is This For?" />
-            <div className="grid gap-3 sm:grid-cols-2">
-              {report.whoShouldBuy && (
-                <div
-                  className="rounded-2xl p-5"
-                  style={{ background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.08)" }}>
-                  <p className="text-xs font-semibold text-green-400 mb-2.5 flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5" /> Good fit for
-                  </p>
-                  <p className="text-sm text-gray-300 leading-relaxed">{report.whoShouldBuy}</p>
-                </div>
-              )}
-              {report.whoShouldAvoid && (
-                <div
-                  className="rounded-2xl p-5"
-                  style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.08)" }}>
-                  <p className="text-xs font-semibold text-red-400 mb-2.5 flex items-center gap-1.5">
-                    <UserX className="h-3.5 w-3.5" /> Think twice if you…
-                  </p>
-                  <p className="text-sm text-gray-300 leading-relaxed">{report.whoShouldAvoid}</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
+        <WhoShouldBuyAvoid
+          whoShouldBuy={report.whoShouldBuy}
+          whoShouldAvoid={report.whoShouldAvoid}
+          isBasicPlan={isBasicPlan}
+        />
 
         {/* ── FINAL TAKE ──────────────────────────────────────────────────── */}
-        {report.finalTake && (
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={viewportOnce}
-            transition={{ duration: 0.4 }}
-            className="mb-4 rounded-2xl p-5"
-            style={{
-              background: "linear-gradient(135deg, rgba(99,102,241,0.07), rgba(139,92,246,0.04))",
-              border: "1px solid rgba(99,102,241,0.15)",
-            }}>
-            <p className="text-[10px] font-bold tracking-widest text-indigo-400/80 mb-2.5 uppercase">
-              Our Bottom Line
-            </p>
-            <p className="text-sm text-gray-200 leading-relaxed">{report.finalTake}</p>
-          </motion.div>
-        )}
+        <FinalTake finalTake={report.finalTake} />
 
         {/* ── TECHNICAL ANALYSIS (collapsible) ────────────────────────────── */}
         <motion.div
