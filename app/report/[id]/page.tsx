@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, XCircle, AlertTriangle, AlertCircle,
   ExternalLink, Star, ChevronDown, ChevronUp, ShoppingCart,
-  RotateCcw, CreditCard, Truck, ShieldCheck, Tag, Shield, Package, Sparkles, Zap,
+  Truck, ShieldCheck, Tag, Shield, Package, Sparkles, Zap,
 } from "lucide-react";
 import type { Report, RiskLevel, Verdict, StoreSignal, PriceVerdict, DeepProductIntel } from "@/lib/types";
 import FBAdChecker from "@/components/FBAdChecker";
@@ -25,6 +25,8 @@ import { PartialDataWarning } from "@/components/report/status/PartialDataWarnin
 import { BlacklistWarning } from "@/components/report/status/BlacklistWarning";
 import { NonDeliveryRiskWarning } from "@/components/report/status/NonDeliveryRiskWarning";
 import { StoreHero } from "@/components/report/hero/StoreHero";
+import { VerdictBanner } from "@/components/report/hero/VerdictBanner";
+import { HealthSnapshot } from "@/components/report/status/HealthSnapshot";
 
 // ─── Motion presets ───────────────────────────────────────────────────────────
 const EASE = [0.4, 0, 0.2, 1] as const;
@@ -121,55 +123,6 @@ function LoadingState() {
   );
 }
 
-// ─── Score ring ───────────────────────────────────────────────────────────────
-function ScoreRing({ score, color }: { score: number; color: string }) {
-  const r = 26;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (score / 100) * circ;
-  return (
-    <div className="relative flex h-[68px] w-[68px] items-center justify-center shrink-0">
-      <svg className="absolute -rotate-90" width="68" height="68" aria-hidden="true">
-        <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="4" />
-        <circle
-          cx="34" cy="34" r={r} fill="none"
-          stroke={color} strokeWidth="4"
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round" opacity="0.85"
-        />
-      </svg>
-      <div className="text-center z-10">
-        <div className="text-lg font-bold leading-none" style={{ color }}>{score}</div>
-        <div className="text-[9px] text-gray-700 mt-0.5">/100</div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Signal labels ────────────────────────────────────────────────────────────
-const SIGNAL_LABELS: Record<string, string> = {
-  "HTTPS Secure": "Secure website connection",
-  "Security Headers": "Advanced security protection",
-  "Return Policy": "Has a return/refund policy",
-  "Privacy Policy": "Has a privacy policy",
-  "Terms of Service": "Has terms of service",
-  "Contact Page": "Has a dedicated contact page",
-  "Shipping Policy": "Has a shipping policy",
-  "Business Email": "Uses a professional email address",
-  "Contact Email": "Has a contact email",
-  "Phone Number": "Phone number listed",
-  "Physical Address": "Physical address listed",
-  "About Page": "Has an About Us page",
-  "Payment Methods": "Accepts trusted payment options",
-  "Domain Age": "Store age & history",
-  "Social Presence": "Active on social media",
-  "Trustpilot": "Trustpilot reputation",
-  "Business Registration": "Registered business entity",
-  "Customer Reviews": "Customer review system",
-  "Cookie Consent": "Data privacy compliance",
-  "Dark Patterns": "Uses pressure sales tactics",
-  "Domain Redirect": "Website redirect detected",
-};
-
 // ─── Config helpers ───────────────────────────────────────────────────────────
 function getVerdictConfig(v: Verdict) {
   if (v === "BUY") return {
@@ -220,18 +173,6 @@ function scoreLabel(s: number) {
   if (s >= 50) return "Medium";
   if (s >= 30) return "Low";
   return "Very Low";
-}
-
-// ─── FactPill ─────────────────────────────────────────────────────────────────
-function FactPill({ text, color, Icon }: { text: string; color: string; Icon: React.ElementType }) {
-  return (
-    <div
-      className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap"
-      style={{ background: `${color}15`, border: `1px solid ${color}30`, color }}>
-      <Icon className="h-3.5 w-3.5 shrink-0" />
-      {text}
-    </div>
-  );
 }
 
 // ─── DropshipRiskCard ─────────────────────────────────────────────────────────
@@ -782,72 +723,6 @@ function AmazonRecommendations({ recommendations }: {
 }
 
 // ─── SectionHeader ────────────────────────────────────────────────────────────
-// ─── HealthBucket ─────────────────────────────────────────────────────────────
-function HealthBucket({
-  type, label, count, signals,
-}: {
-  type: "pass" | "warn" | "fail";
-  label: string;
-  count: number;
-  signals: StoreSignal[];
-}) {
-  const [open, setOpen] = useState(false);
-  const color  = type === "pass" ? "#4ade80" : type === "fail" ? "#f87171" : "#fbbf24";
-  const Icon   = type === "pass" ? CheckCircle2 : type === "fail" ? XCircle : AlertCircle;
-
-  return (
-    <div
-      className="rounded-2xl overflow-hidden transition-colors"
-      style={{ background: `${color}06`, border: `1px solid ${color}18` }}>
-      <button
-        className="w-full flex items-center justify-between gap-2 p-4 transition-colors hover:bg-white/[0.025]"
-        onClick={() => count > 0 && setOpen(!open)}>
-        <div className="flex items-center gap-2 min-w-0">
-          <Icon className="h-4 w-4 shrink-0" style={{ color }} />
-          <span className="text-xs font-semibold truncate" style={{ color }}>{label}</span>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span
-            className="rounded-full px-2 py-0.5 text-xs font-bold"
-            style={{ background: `${color}20`, color }}>
-            {count}
-          </span>
-          {count > 0 && (
-            <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-              <ChevronDown className="h-3.5 w-3.5 text-gray-600" />
-            </motion.div>
-          )}
-        </div>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.04, 0.62, 0.23, 0.98] }}
-            className="overflow-hidden">
-            <ul className="px-4 pb-4 pt-2 space-y-2.5 border-t" style={{ borderColor: `${color}14` }}>
-              {signals.map((s, i) => (
-                <motion.li
-                  key={i}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.035, duration: 0.2 }}
-                  className="flex items-start gap-2 text-xs text-gray-400 leading-relaxed">
-                  <Icon className="mt-0.5 h-3 w-3 shrink-0" style={{ color }} />
-                  <span>{s.detail || SIGNAL_LABELS[s.name] || s.name}</span>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ReportPage() {
   const params  = useParams();
@@ -907,7 +782,6 @@ export default function ReportPage() {
   const failures = report.storeSignals.filter(s => s.status === "fail");
 
   const vc           = getVerdictConfig(report.verdict);
-  const VIcon        = vc.Icon;
   const returnPill   = getReturnPill(report.returnRisk);
   const shippingPill = getShippingPill(report.shippingOriginSignals ?? []);
   const payments     = report.paymentMethods ?? [];
@@ -943,56 +817,20 @@ export default function ReportPage() {
         />
 
         {/* ── VERDICT BANNER ──────────────────────────────────────────────── */}
-        <motion.div
-          {...fadeUpDelayed(0.07)}
-          className="mb-4 rounded-3xl p-5 sm:p-6"
-          style={{
-            background: vc.bg,
-            border: `1px solid ${vc.border}`,
-            boxShadow: `0 0 48px ${vc.glow}`,
-          }}>
-
-          {/* Top row: icon + verdict text + score ring */}
-          <div className="flex items-start gap-4 mb-5">
-            <div
-              className="rounded-2xl p-3 shrink-0"
-              style={{ background: `${vc.color}15`, border: `1px solid ${vc.color}28` }}>
-              <VIcon className="h-6 w-6" style={{ color: vc.color }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold leading-tight" style={{ color: vc.color }}>
-                {vc.label}
-              </h2>
-              <p className="text-gray-400 text-sm mt-1.5 leading-relaxed">{report.verdictReason}</p>
-            </div>
-            {/* Trust score ring — visible at a glance */}
-            <div className="shrink-0 flex flex-col items-center gap-1">
-              <ScoreRing score={report.trustScore} color={trustColor} />
-              <p className="text-[10px] font-medium text-gray-700 uppercase tracking-wider">Trust</p>
-            </div>
-          </div>
-
-          {/* Fact pills */}
-          <div className="flex flex-wrap gap-2">
-            <FactPill text={returnPill.text}  color={returnPill.color}  Icon={RotateCcw}  />
-            <FactPill text={shippingPill.text} color={shippingPill.color} Icon={Truck}     />
-            <FactPill text={paymentText}       color={paymentColor}       Icon={CreditCard} />
-            <FactPill
-              text={`Trust: ${scoreLabel(report.trustScore)}`}
-              color={trustColor}
-              Icon={ShieldCheck} />
-          </div>
-        </motion.div>
+        <VerdictBanner
+          verdictConfig={vc}
+          verdictReason={report.verdictReason}
+          trustScore={report.trustScore}
+          trustColor={trustColor}
+          trustLabel={scoreLabel(report.trustScore)}
+          returnPill={returnPill}
+          shippingPill={shippingPill}
+          paymentText={paymentText}
+          paymentColor={paymentColor}
+        />
 
         {/* ── HEALTH SNAPSHOT ─────────────────────────────────────────────── */}
-        <motion.div {...fadeUpDelayed(0.13)} className="mb-5">
-          <div className="grid grid-cols-3 gap-2.5 mb-2">
-            <HealthBucket type="pass" label="Looking Good"    count={passing.length}  signals={passing}  />
-            <HealthBucket type="warn" label="Worth Reviewing" count={warnings.length} signals={warnings} />
-            <HealthBucket type="fail" label="Concerns"        count={failures.length} signals={failures} />
-          </div>
-          <p className="text-center text-[11px] text-gray-700">Tap each card to expand</p>
-        </motion.div>
+        <HealthSnapshot passing={passing} warnings={warnings} failures={failures} />
 
         {/* ── TRUSTPILOT ──────────────────────────────────────────────────── */}
         <TrustpilotPanel report={report} isBasicPlan={isBasicPlan} />
