@@ -221,6 +221,71 @@ function buildFallbackAnalysis(data: ScrapedData, trustScore: number, returnRisk
 
 const VALID_PAGE_TYPES: PageProductType[] = ["single_product", "bundle_kit", "category_collection", "service_digital", "funnel_quiz", "unknown"];
 
+/**
+ * Build a minimal intel object from scraped data when OpenAI extraction fails.
+ * Enables downstream sections (Amazon recs, dropship risk, price check) to still work.
+ *
+ * Extraction strategy:
+ *   - productName: scraped product name (prefer first physical product, fallback pageTitle)
+ *   - currentPrice: first priceUsd > 0 from products (or priceNumeric if USD already)
+ *   - amazonSearchKeyword: extracted from productName (first 3-4 meaningful words, no emoji)
+ *   - pageType: "single_product" if we have a product, else "unknown"
+ */
+export function buildFallbackIntel(
+  products: ScrapedProduct[],
+  pageTitle: string,
+): DeepProductIntel | null {
+  // Find best product — has name + positive price
+  const validProduct = products.find(p => p.name && (p.priceUsd ?? p.priceNumeric ?? 0) > 0);
+  if (!validProduct && !pageTitle) return null;
+
+  const rawName = validProduct?.name || pageTitle.split(/[|\-–—]/)[0].trim();
+  // Strip emoji/punctuation, collapse whitespace
+  const cleanName = rawName
+    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}⚡️🔥💥✨🎁🎉✅❌⭐️🌟]/gu, "")
+    .replace(/^[\s\p{P}]+|[\s\p{P}]+$/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Extract first 3-4 meaningful words (skip marketing fluff)
+  const stopWords = new Set(["the", "a", "an", "for", "with", "and", "or", "in", "of", "to", "new", "best", "hot", "sale", "discount", "free", "limited"]);
+  const keyword = cleanName
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopWords.has(w))
+    .slice(0, 4)
+    .join(" ");
+
+  const price = validProduct
+    ? (validProduct.priceUsd ?? (validProduct.currency === "USD" ? validProduct.priceNumeric : null))
+    : null;
+
+  return {
+    pageType: validProduct ? "single_product" : "unknown",
+    productName: cleanName.slice(0, 150),
+    brand: null,
+    category: "General",
+    currentPrice: price,
+    originalPrice: null,
+    discountPercent: null,
+    currency: validProduct?.currency || "USD",
+    limitedEdition: false,
+    bundleComponents: [],
+    bundleTotalValue: null,
+    bundleSavings: null,
+    ingredients: [],
+    marketingClaims: [],
+    targetConcerns: [],
+    skinType: null,
+    usageInstructions: null,
+    onPageRating: null,
+    onPageReviewCount: null,
+    funnelSignals: [],
+    searchKeywords: keyword ? [keyword] : [],
+    amazonSearchKeyword: keyword || null,
+  };
+}
+
 export async function extractProductIntel(
   pageContent: string,
   products: ScrapedProduct[],
@@ -286,7 +351,7 @@ Rules:
       max_tokens: 600,
       temperature: 0.1,
       response_format: { type: "json_object" },
-    }, { timeout: 8000 }); // 8s hard timeout — fallback to null if slow
+    }, { timeout: 20000 }); // 20s hard timeout — was 8s but OpenAI from Hetzner sometimes takes 10-15s
 
     const raw = JSON.parse(response.choices[0]?.message?.content || "{}") as Record<string, unknown>;
 
@@ -382,6 +447,24 @@ function mapScrapedToRecs(ranked: ReturnType<typeof rankAndFilterAmazonResults>)
   }));
 }
 
+/**
+ * Clean a keyword for marketplace search.
+ * Strips emoji, leading punctuation, excess whitespace, marketing prefixes.
+ */
+function sanitizeSearchKeyword(raw: string): string {
+  if (!raw) return "";
+  return raw
+    // Remove emoji (U+1F000-U+1FFFF and misc symbols)
+    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}⚡️🔥💥✨🎁🎉✅❌⭐️🌟]/gu, "")
+    // Remove leading/trailing punctuation and whitespace
+    .replace(/^[\s\p{P}]+|[\s\p{P}]+$/gu, "")
+    // Collapse internal whitespace
+    .replace(/\s+/g, " ")
+    .trim()
+    // Cap length for URL safety
+    .slice(0, 80);
+}
+
 export async function getAmazonRecommendations(
   products: { name: string }[],
   storeDomain: string,
@@ -390,13 +473,22 @@ export async function getAmazonRecommendations(
   country: string = "US",
 ): Promise<AmazonRecommendation[]> {
   void storeDomain; // kept for backward-compatible signature
-  const keyword = resolveAmazonKeyword(intel, products, storeContext);
-  if (!keyword) return [];
+  const rawKeyword = resolveAmazonKeyword(intel, products, storeContext);
+  if (!rawKeyword) return [];
+  const keyword = sanitizeSearchKeyword(rawKeyword);
+  if (!keyword || keyword.length < 3) return [];
 
   const storePrice = intel?.currentPrice ?? null;
 
+  // ALWAYS scrape Amazon.com (US) regardless of user country —
+  // amazon.com serves USD/English by default and has the highest product catalog.
+  // Non-US Amazon domains (amazon.de etc.) require separate affiliate registration.
+  // User country is only used for landed cost calculation, not marketplace routing.
+  const SCRAPE_COUNTRY = "US";
+  void country; // country is informational only — scrapers use US
+
   // Tier 1: scrape Amazon with precise keyword
-  const scraped = await scrapeAmazonSearch(keyword, 15, country);
+  const scraped = await scrapeAmazonSearch(keyword, 15, SCRAPE_COUNTRY);
   if (scraped.length > 0) {
     const ranked = rankAndFilterAmazonResults(scraped, storePrice, 5);
     if (ranked.length >= 2) return mapScrapedToRecs(ranked);
@@ -404,9 +496,9 @@ export async function getAmazonRecommendations(
 
   // Tier 2: fallback with category keyword (broader)
   if (intel?.category && intel.category !== "General") {
-    const fallbackKeyword = intel.category.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+    const fallbackKeyword = sanitizeSearchKeyword(intel.category.toLowerCase());
     if (fallbackKeyword && fallbackKeyword !== keyword.toLowerCase()) {
-      const fallbackScraped = await scrapeAmazonSearch(fallbackKeyword, 15, country);
+      const fallbackScraped = await scrapeAmazonSearch(fallbackKeyword, 15, SCRAPE_COUNTRY);
       if (fallbackScraped.length > 0) {
         const ranked = rankAndFilterAmazonResults(fallbackScraped, storePrice, 5);
         if (ranked.length >= 2) return mapScrapedToRecs(ranked);
@@ -426,16 +518,23 @@ export async function getAliExpressRecommendations(
   country: string = "US",
 ): Promise<AliExpressRecommendation[]> {
   // Use the same keyword resolution as Amazon (AI-cleaned short keyword)
-  const keyword = intel?.amazonSearchKeyword
+  const rawKeyword = intel?.amazonSearchKeyword
     || intel?.searchKeywords?.[0]
     || (intel?.productName && intel.productName.length > 3 ? intel.productName.slice(0, 60) : null)
     || (storeContext?.pageTitle ? storeContext.pageTitle.split(/[|\-–—]/)[0].trim().slice(0, 60) : null);
-  if (!keyword) return [];
+  if (!rawKeyword) return [];
+  const keyword = sanitizeSearchKeyword(rawKeyword);
+  if (!keyword || keyword.length < 3) return [];
 
   const storePrice = intel?.currentPrice ?? null;
 
+  // ALWAYS use US as search country for AliExpress API —
+  // AliExpress Open API handles ship-to via separate param and returns USD reliably for US.
+  const SCRAPE_COUNTRY = "US";
+  void country;
+
   // Tier 1: precise keyword
-  const scraped = await scrapeAliSearch(keyword, 15, country);
+  const scraped = await scrapeAliSearch(keyword, 15, SCRAPE_COUNTRY);
   if (scraped.length > 0) {
     const ranked = rankAndFilterAliResults(scraped, storePrice, 5);
     if (ranked.length >= 2) return mapAliToRecs(ranked);
@@ -443,9 +542,9 @@ export async function getAliExpressRecommendations(
 
   // Tier 2: category keyword fallback
   if (intel?.category && intel.category !== "General") {
-    const fallbackKeyword = intel.category.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+    const fallbackKeyword = sanitizeSearchKeyword(intel.category.toLowerCase());
     if (fallbackKeyword && fallbackKeyword !== keyword.toLowerCase()) {
-      const fallbackScraped = await scrapeAliSearch(fallbackKeyword, 15, country);
+      const fallbackScraped = await scrapeAliSearch(fallbackKeyword, 15, SCRAPE_COUNTRY);
       if (fallbackScraped.length > 0) {
         const ranked = rankAndFilterAliResults(fallbackScraped, storePrice, 5);
         if (ranked.length >= 2) return mapAliToRecs(ranked);

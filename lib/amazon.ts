@@ -73,7 +73,7 @@ async function tryCurlFetch(searchUrl: string, cookieHeader: string, proxyUrl: s
     "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "-H", "Accept-Language: en-US,en;q=0.9",
     "-H", `Cookie: ${cookieHeader}`,
-    "--max-time", "8",
+    "--max-time", "12",
     "--compressed",
   ];
   if (proxyUrl) {

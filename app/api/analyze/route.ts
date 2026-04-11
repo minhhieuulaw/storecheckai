@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { scrapeStore } from "@/lib/scraper";
 import { calculateTrustScore, calculateReturnRisk } from "@/lib/scoring";
-import { analyzeWithAI, analyzeMainProductPrice, getAmazonRecommendations, getAliExpressRecommendations, extractProductIntel } from "@/lib/analyze";
+import { analyzeWithAI, analyzeMainProductPrice, getAmazonRecommendations, getAliExpressRecommendations, extractProductIntel, buildFallbackIntel } from "@/lib/analyze";
 import { detectDropshipRisk, estimateLandedCost } from "@/lib/dropship-detection";
 import { detectUserCountry } from "@/lib/user-country";
 import { saveReport, saveAnalysisFailure } from "@/lib/store";
@@ -29,6 +29,7 @@ type CachedAnalysis = {
 };
 const analysisCache = new Map<string, CachedAnalysis>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_NULL_INTEL_MS = 30 * 1000; // 30s when intel is null so we retry sooner
 
 // ── Simple in-memory rate limiter (per process instance) ──────────────────────
 const rl = new Map<string, { count: number; resetAt: number }>();
@@ -140,43 +141,54 @@ export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeRespon
     const restriction = checkUrlRestrictions(url);
     if (restriction) return NextResponse.json({ success: false, error: restriction }, { status: 400 });
 
-    // ── 5. Scrape + Score + AI (with domain-level cache) ─────────────────────
-    const domain = new URL(url).hostname.replace(/^www\./, "");
+    // ── 5. Scrape + Score + AI (with URL-level cache) ─────────────────────────
+    // Cache key is full URL (origin + pathname) not just domain — different product
+    // pages on the same store have different intel and shouldn't share cache.
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.replace(/^www\./, "");
+    const cacheKey = `${urlObj.origin}${urlObj.pathname}`;
     const now = Date.now();
-    const cached = analysisCache.get(domain);
+    const cached = analysisCache.get(cacheKey);
     let scraped: CachedAnalysis["scraped"];
     let rawScore: number;
     let signals: CachedAnalysis["signals"];
     let returnRiskRules: CachedAnalysis["returnRiskRules"];
     let ai: CachedAnalysis["ai"];
+    let productIntelResult: Awaited<ReturnType<typeof extractProductIntel>> = null;
 
     if (cached && now < cached.expiresAt) {
       ({ scraped, rawScore, signals, returnRiskRules, ai } = cached);
+      productIntelResult = cached.productIntel;
     } else {
       scraped = await scrapeStore(url);
       ({ trustScore: rawScore, signals } = calculateTrustScore(scraped));
       ({ risk: returnRiskRules } = calculateReturnRisk(scraped));
 
-      // Run product intel + Claude analysis in PARALLEL to reduce total latency
-      // Intel has 8s timeout — if it finishes before Claude, Claude gets context; otherwise null
+      // Run product intel + Claude analysis in PARALLEL to reduce total latency.
+      // Intel has 20s hard timeout inside the call — swallow errors to null and
+      // downstream code will compute a fallback intel from scraped.products.
       const intelPromise = scraped.pageContent
         ? extractProductIntel(scraped.pageContent, scraped.products, scraped.pageTitle, url)
             .catch(() => null)
         : Promise.resolve(null);
 
-      // Start both in parallel
-      const [productIntelResult, aiWithoutIntel] = await Promise.all([
+      const [intelRes, aiWithoutIntel] = await Promise.all([
         intelPromise,
         analyzeWithAI(scraped, rawScore, returnRiskRules, locale, null),
       ]);
-
-      // Use AI result (intel was run in parallel, so Claude didn't have it this time)
-      // But intel data is still used for Amazon recs + report display
+      productIntelResult = intelRes;
       ai = aiWithoutIntel;
-      analysisCache.set(domain, { scraped, rawScore, signals, returnRiskRules, ai, productIntel: productIntelResult, expiresAt: now + CACHE_TTL_MS });
+
+      // Cache null intel only briefly (30s) so a transient OpenAI timeout doesn't
+      // poison the full 5-minute TTL and break all downstream sections.
+      const ttl = productIntelResult ? CACHE_TTL_MS : CACHE_TTL_NULL_INTEL_MS;
+      analysisCache.set(cacheKey, { scraped, rawScore, signals, returnRiskRules, ai, productIntel: productIntelResult, expiresAt: now + ttl });
     }
 
-    const productIntel = analysisCache.get(domain)?.productIntel ?? null;
+    // If OpenAI intel extraction failed/timed out, build a minimal fallback from
+    // scraped products so downstream sections (Amazon recs, dropship risk, price
+    // check, landed cost) still render instead of all going blank.
+    const productIntel = productIntelResult ?? buildFallbackIntel(scraped.products, scraped.pageTitle);
 
     // Detect buyer country from request headers (Cloudflare/Vercel/Accept-Language)
     // Used to localize Amazon/AliExpress ship-to + landed cost calculation
