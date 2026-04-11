@@ -6,10 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, XCircle, AlertTriangle, AlertCircle,
   ArrowLeft, Share2, ExternalLink, Star, ChevronDown, ChevronUp, ShoppingCart,
-  RotateCcw, CreditCard, Truck, Users, UserX, ShieldCheck, Tag, Shield, Lock, Package, Sparkles, Zap,
+  RotateCcw, CreditCard, Truck, Users, UserX, ShieldCheck, Tag, Shield, Package, Sparkles, Zap,
 } from "lucide-react";
 import type { Report, RiskLevel, Verdict, StoreSignal, PriceVerdict, TrustpilotReview, DeepProductIntel } from "@/lib/types";
 import FBAdChecker from "@/components/FBAdChecker";
+import { SectionHeader } from "@/components/report/layout/SectionHeader";
+import { LockedSection } from "@/components/report/common/LockedSection";
+import { ErrorState } from "@/components/report/common/ErrorState";
 
 // ─── Motion presets ───────────────────────────────────────────────────────────
 const EASE = [0.4, 0, 0.2, 1] as const;
@@ -767,22 +770,6 @@ function AmazonRecommendations({ recommendations }: {
 }
 
 // ─── SectionHeader ────────────────────────────────────────────────────────────
-function SectionHeader({ label, badge }: { label: string; badge?: string }) {
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <span className="text-xs font-bold uppercase tracking-widest text-gray-300 shrink-0">{label}</span>
-      {badge && (
-        <span
-          className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-indigo-400 shrink-0"
-          style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)" }}>
-          {badge}
-        </span>
-      )}
-      <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-    </div>
-  );
-}
-
 // ─── HealthBucket ─────────────────────────────────────────────────────────────
 function HealthBucket({
   type, label, count, signals,
@@ -845,59 +832,6 @@ function HealthBucket({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── Locked section (Starter / Free plan) ────────────────────────────────────
-function LockedSection({ label }: { label: string }) {
-  return (
-    <div className="relative rounded-2xl overflow-hidden mb-4"
-      style={{ border: "1px solid rgba(99,102,241,0.18)", background: "rgba(99,102,241,0.03)" }}>
-      {/* Fake content blurred behind the lock */}
-      <div className="blur-sm opacity-30 pointer-events-none select-none p-5 space-y-2.5" aria-hidden>
-        <div className="h-2.5 w-44 rounded-full bg-gray-700" />
-        <div className="h-2.5 w-full rounded-full bg-gray-800" />
-        <div className="h-2.5 w-3/4 rounded-full bg-gray-800" />
-        <div className="h-2.5 w-1/2 rounded-full bg-gray-800" />
-      </div>
-      {/* Lock overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-        style={{ backdropFilter: "blur(2px)", background: "rgba(7,7,15,0.65)" }}>
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl"
-          style={{ background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)" }}>
-          <Lock className="h-4 w-4 text-indigo-400" />
-        </div>
-        <p className="text-xs font-semibold text-gray-300">{label} — Personal plan</p>
-        <a href="/dashboard/billing"
-          className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors underline underline-offset-2">
-          Upgrade to unlock →
-        </a>
-      </div>
-    </div>
-  );
-}
-
-// ─── Error state ──────────────────────────────────────────────────────────────
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 text-center">
-      <div
-        className="rounded-2xl p-4"
-        style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}>
-        <XCircle className="h-10 w-10 text-red-400" />
-      </div>
-      <div>
-        <p className="text-xl font-bold mb-2">Report not found</p>
-        <p className="text-gray-500 text-sm mb-6 max-w-sm leading-relaxed">{message}</p>
-        <a
-          href="/"
-          className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
-          style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
-          <Shield className="h-4 w-4" />
-          Check a store
-        </a>
-      </div>
     </div>
   );
 }
