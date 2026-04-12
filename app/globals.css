@@ -35,6 +35,72 @@
   --dur-slow:     400ms;
 }
 
+/* ─── V2 Report Design Tokens (Bento Executive Dashboard) ─────────────────── */
+:root {
+  /* Surface */
+  --v2-bg:              #07070B;
+  --v2-surface:         #0F0F15;
+  --v2-surface-raised:  #16161E;
+  --v2-surface-hover:   #1C1C25;
+  --v2-border:          #22222D;
+  --v2-border-strong:   #2E2E3A;
+
+  /* Text */
+  --v2-text:            #F4F4F5;
+  --v2-text-secondary:  #A1A1AA;
+  --v2-text-muted:      #71717A;
+  --v2-text-dim:        #52525B;
+
+  /* Semantic */
+  --v2-accent:          #22D3EE;
+  --v2-accent-glow:     rgba(34,211,238,0.15);
+  --v2-success:         #34D399;
+  --v2-warning:         #FBBF24;
+  --v2-danger:          #F87171;
+  --v2-info:            #A78BFA;
+
+  /* Verdict */
+  --v2-verdict-buy:     #10B981;
+  --v2-verdict-caution: #F59E0B;
+  --v2-verdict-skip:    #EF4444;
+
+  /* Data source badges */
+  --v2-src-live:        #10B981;
+  --v2-src-scraped:     #14B8A6;
+  --v2-src-hybrid:      #F59E0B;
+  --v2-src-ai:          #F97316;
+  --v2-src-partial:     #71717A;
+
+  /* Radius */
+  --v2-radius-sm:       8px;
+  --v2-radius-md:       14px;
+  --v2-radius-lg:       20px;
+  --v2-radius-xl:       28px;
+  --v2-radius-full:     9999px;
+
+  /* Spacing (4px base) */
+  --v2-space-1:  4px;  --v2-space-2:  8px;  --v2-space-3: 12px;
+  --v2-space-4: 16px;  --v2-space-5: 20px;  --v2-space-6: 24px;
+  --v2-space-8: 32px;  --v2-space-10:40px;  --v2-space-12:48px;
+  --v2-space-16:64px;  --v2-space-24:96px;
+
+  /* Shadow stack */
+  --v2-shadow-flat:    none;
+  --v2-shadow-card:    0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.35);
+  --v2-shadow-popover: 0 10px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35);
+  --v2-shadow-modal:   0 30px 80px rgba(0,0,0,0.70);
+
+  /* Motion */
+  --v2-ease:           cubic-bezier(0.22, 1, 0.36, 1);
+  --v2-dur-fast:       150ms;
+  --v2-dur:            240ms;
+  --v2-dur-slow:       480ms;
+
+  /* Font */
+  --v2-font-display:   var(--font-fraunces), Georgia, serif;
+  --v2-font-sans:      var(--font-geist-sans), system-ui, sans-serif;
+}
+
 /* ─── Base ─────────────────────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
