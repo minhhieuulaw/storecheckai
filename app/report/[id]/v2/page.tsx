@@ -6,6 +6,7 @@ import type { Report } from "@/lib/types";
 import { ErrorState } from "@/components/report/common/ErrorState";
 import { StoreHeroV2 } from "@/components/report/v2/StoreHeroV2";
 import { VerdictBannerV2 } from "@/components/report/v2/VerdictBannerV2";
+import { HealthSnapshotV2 } from "@/components/report/v2/HealthSnapshotV2";
 
 /**
  * Report V2 — Bento Executive Dashboard
@@ -94,7 +95,18 @@ export default function ReportPageV2() {
           </div>
         </div>
 
-        {/* TODO: Health Snapshot bento, Trustpilot, Commerce row, etc. */}
+        {/* ── HEALTH SNAPSHOT ──────────────────────────────────────────── */}
+        <div className="mb-4">
+          <HealthSnapshotV2
+            returnRisk={report.returnRisk}
+            trustpilotRating={report.trustpilotRating}
+            trustpilotReviewCount={report.trustpilotReviewCount}
+            shippingOriginSignals={report.shippingOriginSignals ?? []}
+            paymentMethods={report.paymentMethods ?? []}
+          />
+        </div>
+
+        {/* TODO: Trustpilot, Commerce row, etc. */}
         <p
           className="text-center text-xs mt-8"
           style={{ color: "var(--v2-text-dim)" }}
