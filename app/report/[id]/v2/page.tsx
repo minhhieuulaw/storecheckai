@@ -8,6 +8,7 @@ import { StoreHeroV2 } from "@/components/report/v2/StoreHeroV2";
 import { VerdictBannerV2 } from "@/components/report/v2/VerdictBannerV2";
 import { HealthSnapshotV2 } from "@/components/report/v2/HealthSnapshotV2";
 import { TrustpilotV2 } from "@/components/report/v2/TrustpilotV2";
+import { DropshipRiskV2 } from "@/components/report/v2/DropshipRiskV2";
 
 /**
  * Report V2 — Bento Executive Dashboard
@@ -118,7 +119,18 @@ export default function ReportPageV2() {
           />
         </div>
 
-        {/* TODO: Commerce row, Recommendations, Guidance, Technical, FB Ad, Footer */}
+        {/* ── DROPSHIP RISK ────────────────────────────────────────────── */}
+        {(() => {
+          const risk = (report as unknown as { dropshipRisk?: { markupScore: number; level: "low" | "medium" | "high" | "critical"; storePriceUsd: number | null; aliMedianPriceUsd: number | null; markupMultiplier: number | null; evidence: string[]; recommendation: string } }).dropshipRisk;
+          if (!risk) return null;
+          return (
+            <div className="mb-4">
+              <DropshipRiskV2 risk={risk} />
+            </div>
+          );
+        })()}
+
+        {/* TODO: Landed Cost, Product Intel, Price Check, Recommendations, Guidance, Technical, FB Ad, Footer */}
         <p
           className="text-center text-xs mt-8"
           style={{ color: "var(--v2-text-dim)" }}
