@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/report/common/ErrorState";
 import { StoreHeroV2 } from "@/components/report/v2/StoreHeroV2";
 import { VerdictBannerV2 } from "@/components/report/v2/VerdictBannerV2";
 import { HealthSnapshotV2 } from "@/components/report/v2/HealthSnapshotV2";
+import { TrustpilotV2 } from "@/components/report/v2/TrustpilotV2";
 
 /**
  * Report V2 — Bento Executive Dashboard
@@ -106,7 +107,18 @@ export default function ReportPageV2() {
           />
         </div>
 
-        {/* TODO: Trustpilot, Commerce row, etc. */}
+        {/* ── TRUSTPILOT ───────────────────────────────────────────────── */}
+        <div className="mb-4">
+          <TrustpilotV2
+            rating={report.trustpilotRating}
+            reviewCount={report.trustpilotReviewCount}
+            goodReviews={report.trustpilotGoodReviews ?? []}
+            badReviews={report.trustpilotBadReviews ?? []}
+            domain={report.domain}
+          />
+        </div>
+
+        {/* TODO: Commerce row, Recommendations, Guidance, Technical, FB Ad, Footer */}
         <p
           className="text-center text-xs mt-8"
           style={{ color: "var(--v2-text-dim)" }}
