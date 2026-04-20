@@ -10,6 +10,7 @@ import { HealthSnapshotV2 } from "@/components/report/v2/HealthSnapshotV2";
 import { TrustpilotV2 } from "@/components/report/v2/TrustpilotV2";
 import { DropshipRiskV2 } from "@/components/report/v2/DropshipRiskV2";
 import { LandedCostV2 } from "@/components/report/v2/LandedCostV2";
+import { ProductIntelV2 } from "@/components/report/v2/ProductIntelV2";
 
 /**
  * Report V2 — Bento Executive Dashboard
@@ -142,7 +143,14 @@ export default function ReportPageV2() {
           );
         })()}
 
-        {/* TODO: Product Intel, Price Check, Recommendations, Guidance, Technical, FB Ad, Footer */}
+        {/* ── PRODUCT INTELLIGENCE ─────────────────────────────────────── */}
+        {report.productIntel && report.productIntel.pageType !== "unknown" && (
+          <div className="mb-4">
+            <ProductIntelV2 intel={report.productIntel} />
+          </div>
+        )}
+
+        {/* TODO: Price Check, Recommendations, Guidance, Technical, FB Ad, Footer */}
         <p
           className="text-center text-xs mt-8"
           style={{ color: "var(--v2-text-dim)" }}
