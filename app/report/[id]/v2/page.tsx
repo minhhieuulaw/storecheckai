@@ -11,6 +11,7 @@ import { TrustpilotV2 } from "@/components/report/v2/TrustpilotV2";
 import { DropshipRiskV2 } from "@/components/report/v2/DropshipRiskV2";
 import { LandedCostV2 } from "@/components/report/v2/LandedCostV2";
 import { ProductIntelV2 } from "@/components/report/v2/ProductIntelV2";
+import { PriceCheckV2 } from "@/components/report/v2/PriceCheckV2";
 
 /**
  * Report V2 — Bento Executive Dashboard
@@ -43,6 +44,8 @@ export default function ReportPageV2() {
 
   if (error) return <ErrorState message={error} />;
   if (!report) return <LoadingStateV2 />;
+
+  const isBasicPlan = report.planUsed === "starter" || report.planUsed === "free";
 
   return (
     <div
@@ -150,7 +153,16 @@ export default function ReportPageV2() {
           </div>
         )}
 
-        {/* TODO: Price Check, Recommendations, Guidance, Technical, FB Ad, Footer */}
+        {/* ── PRICE CHECK ──────────────────────────────────────────────── */}
+        <div className="mb-4">
+          <PriceCheckV2
+            priceAnalysis={report.priceAnalysis ?? []}
+            products={report.products ?? []}
+            isBasicPlan={isBasicPlan}
+          />
+        </div>
+
+        {/* TODO: Recommendations, Guidance, Technical, FB Ad, Footer */}
         <p
           className="text-center text-xs mt-8"
           style={{ color: "var(--v2-text-dim)" }}
